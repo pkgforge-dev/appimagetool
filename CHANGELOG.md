@@ -1,4 +1,19 @@
 
+## [0.2.0](https://github.com/pkgforge-dev/appimagetool/compare/0.1.0...0.2.0) - 2026-05-04
+
+### ⛰️  Features
+
+- *(config)* Expose keep-mount, devel-release, and profile-timeout - ([b3db290](https://github.com/pkgforge-dev/appimagetool/commit/b3db290c18c43fa38e228b6f49dfd7cfa8ed1bfd))
+- *(config)* Split arch into runtime APPIMAGE_ARCH and display ARCH - ([467395d](https://github.com/pkgforge-dev/appimagetool/commit/467395db4738dc99c455f484a41236a46dc0c87c))
+
+### 🐛 Bug Fixes
+
+- *(uruntime)* Pin default URL to v0.5.7 for reproducible builds - ([91fd541](https://github.com/pkgforge-dev/appimagetool/commit/91fd54158dc41e52c8b4bb2ccb57ac6a430f6fd2))
+
+### 📚 Documentation
+
+- Rewrite README for clarity - ([0897b5f](https://github.com/pkgforge-dev/appimagetool/commit/0897b5fbca6470b38ff83893f546a315187c22bb))
+
 ## [0.1.0] - 2026-05-03
 
 ### ⛰️  Features
