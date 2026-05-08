@@ -1,4 +1,10 @@
 
+## [0.3.0](https://github.com/pkgforge-dev/appimagetool/compare/0.2.0...0.3.0) - 2026-05-08
+
+### 🐛 Bug Fixes
+
+- *(uruntime)* Scan whole binary for URUNTIME_MOUNT marker - ([395644b](https://github.com/pkgforge-dev/appimagetool/commit/395644b32d1b829f0c33dceb2d48b56bed5c3bac))
+
 ## [0.2.0](https://github.com/pkgforge-dev/appimagetool/compare/0.1.0...0.2.0) - 2026-05-04
 
 ### ⛰️  Features
