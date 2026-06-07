@@ -1,4 +1,10 @@
 
+## [0.3.2](https://github.com/pkgforge-dev/appimagetool/compare/0.3.1...0.3.2) - 2026-06-07
+
+### 🐛 Bug Fixes
+
+- Fix `dwarfs` link - ([5dc67e3](https://github.com/pkgforge-dev/appimagetool/commit/5dc67e385508d212812476dfeb449c0c679b373d))
+
 ## [0.3.1](https://github.com/pkgforge-dev/appimagetool/compare/0.3.0...0.3.1) - 2026-06-07
 
 ## [0.3.0](https://github.com/pkgforge-dev/appimagetool/compare/0.2.0...0.3.0) - 2026-05-08
