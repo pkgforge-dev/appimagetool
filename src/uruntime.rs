@@ -14,7 +14,7 @@ const MOUNT_MARKER: &[u8] = b"URUNTIME_MOUNT=";
 /// Default uruntime download URL pattern. Pinned for reproducible builds;
 /// override with `--runtime-url` / `URUNTIME_LINK` to track a different
 /// release. `{arch}` gets replaced with the target architecture.
-const DEFAULT_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.5.7/uruntime-appimage-dwarfs-lite-{arch}";
+const DEFAULT_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.5.8/uruntime-appimage-dwarfs-lite-{arch}";
 
 /// Ensure a runtime binary is available. Returns the path to the runtime.
 ///

@@ -11,7 +11,7 @@ use crate::error::{Error, Result};
 use crate::util;
 
 const DEFAULT_DWARFS_URL_TEMPLATE: &str =
-    "https://github.com/mhx/dwarfs/releases/download/v0.15.1/dwarfs-universal-0.15.1-Linux-{arch}";
+    "https://github.com/mhx/dwarfs/releases/download/v0.15.3/dwarfs-universal-0.15.1-Linux-{arch}";
 
 /// Resolve the mkdwarfs binary path. Checks user-provided path, then $PATH,
 /// then downloads to tmpdir.
