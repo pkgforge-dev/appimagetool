@@ -1,5 +1,9 @@
 # appimagetool
 
+[![GitHub Downloads](https://img.shields.io/github/downloads/pkgforge-dev/appimagetool/total?logo=github&label=GitHub%20Downloads)](https://github.com/pkgforge-dev/appimagetool/releases/latest)
+[![CI Build Status](https://github.com//pkgforge-dev/appimagetool/actions/workflows/release.yml/badge.svg)](https://github.com/pkgforge-dev/appimagetool/releases/latest)
+[![Latest Stable Release](https://img.shields.io/github/v/release/pkgforge-dev/appimagetool)](https://github.com/pkgforge-dev/appimagetool/releases/latest)
+
 A Rust implementation of `appimagetool` for the [Anylinux-AppImages](https://github.com/pkgforge-dev/Anylinux-AppImages) project.
 
 It takes a prepared AppDir and produces a finished `.AppImage` using DWARFS compression and the [uruntime](https://github.com/VHSgunzo/uruntime) AppImage runtime. Single binary, no Python, no C++ deps.
