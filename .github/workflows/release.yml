@@ -32,9 +32,33 @@ jobs:
               RUNNER: ubuntu-24.04-arm,
               TARGET: aarch64-unknown-linux-musl,
             }
+          - {
+              NAME: riscv64-linux,
+              RUNNER: ubuntu-latest,
+              TARGET: riscv64gc-unknown-linux-musl,
+              ZIGTARGET: riscv64-linux-musl,
+            }
+          - {
+              NAME: loongarch64-linux,
+              RUNNER: ubuntu-latest,
+              TARGET: loongarch64-unknown-linux-musl,
+              ZIGTARGET: loongarch64-linux-musl,
+            }
+          - {
+              NAME: ppc64-linux,
+              RUNNER: ubuntu-latest,
+              TARGET: powerpc64-unknown-linux-musl,
+              ZIGTARGET: powerpc64-linux-musl,
+            }
+          - {
+              NAME: ppc64le-linux,
+              RUNNER: ubuntu-latest,
+              TARGET: powerpc64le-unknown-linux-musl,
+              ZIGTARGET: powerpc64le-linux-musl,
+            }
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set the release version
         shell: bash
@@ -47,13 +71,58 @@ jobs:
           sudo apt-get install -y --no-install-recommends musl-tools b3sum
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
           targets: ${{ matrix.build.TARGET }}
           components: rust-src
 
+      - name: Install zig
+        if: ${{ matrix.build.ZIGTARGET }}
+        run: |
+          curl -fL --retry 3 -o "$RUNNER_TEMP/zig.tar.xz" \
+            "https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz"
+          echo "70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00  $RUNNER_TEMP/zig.tar.xz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zig"
+          tar xJf "$RUNNER_TEMP/zig.tar.xz" -C "$RUNNER_TEMP/zig" --strip-components=1
+
+      - name: Create zig-cc linker wrapper
+        if: ${{ matrix.build.ZIGTARGET }}
+        run: |
+          {
+            echo '#!/bin/bash'
+            echo 'args=()'
+            echo 'for a in "$@"; do'
+            echo '  case "$a" in'
+            echo '    *fix-cortex-a53-843419*) continue ;;'
+            echo '    -nostartfiles) continue ;;'
+            echo '    crt1.o|Scrt1.o|rcrt1.o|crti.o|crtn.o) continue ;;'
+            echo '    crtbegin.o|crtend.o|crtbeginS.o|crtendS.o) continue ;;'
+            echo '    -lc) continue ;;'
+            echo '    */self-contained/*.o) continue ;;'
+            echo '    --target=*-unknown-linux-*)'
+            echo '      t="${a#--target=}"'
+            echo '      t="${t/-unknown-linux-/-linux-}"'
+            echo '      args+=("-target" "$t")'
+            echo '      ;;'
+            echo '    *) args+=("$a") ;;'
+            echo '  esac'
+            echo 'done'
+            echo "exec \"$RUNNER_TEMP/zig/zig\" cc -target ${{ matrix.build.ZIGTARGET }} \"\${args[@]}\""
+          } > "$RUNNER_TEMP/zigcc"
+          chmod +x "$RUNNER_TEMP/zigcc"
+
       - name: Build
-        run: cargo build --release --locked --target ${{ matrix.build.TARGET }} -Z build-std=std,panic_abort
+        run: |
+          if [ -n "${{ matrix.build.ZIGTARGET }}" ]; then
+            TENV=$(echo "${{ matrix.build.TARGET }}" | tr 'a-z-' 'A-Z_')
+            export CARGO_TARGET_${TENV}_LINKER="$RUNNER_TEMP/zigcc"
+            # CARGO_TARGET_RUSTFLAGS (not RUSTFLAGS) so the flags do not leak
+            # into build scripts
+            export CARGO_TARGET_RUSTFLAGS="-C target-feature=+crt-static -C link-self-contained=no"
+            export ZIG_GLOBAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
+            export ZIG_LOCAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
+          fi
+          cargo build --release --locked --target ${{ matrix.build.TARGET }} -Z build-std=std,panic_abort
 
       - name: Prepare release assets
         shell: bash
@@ -71,7 +140,7 @@ jobs:
           b3sum appimagetool-${{ matrix.build.NAME }}.tar.xz > appimagetool-${{ matrix.build.NAME }}.tar.xz.b3sum
 
       - name: Upload to release
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: appimagetool-${{ matrix.build.NAME }}*
@@ -80,7 +149,7 @@ jobs:
           tag: ${{ github.ref }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-name: "appimagetool-${{ matrix.build.NAME }}"
           subject-path: appimagetool-${{ matrix.build.NAME }}*

@@ -6,7 +6,7 @@
 
 A Rust implementation of `appimagetool` for the [Anylinux-AppImages](https://github.com/pkgforge-dev/Anylinux-AppImages) project.
 
-It takes a prepared AppDir and produces a finished `.AppImage` using DWARFS compression and the [uruntime](https://github.com/VHSgunzo/uruntime) AppImage runtime. Single binary, no Python, no C++ deps.
+It takes a prepared AppDir and produces a finished `.AppImage` using DWARFS compression and the [uruntime](https://github.com/pkgforge-dev/Anylinux-uruntime) AppImage runtime. Single binary, no Python, no C++ deps.
 
 ## Quick start
 
