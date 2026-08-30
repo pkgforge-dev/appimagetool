@@ -1,4 +1,6 @@
 
+## [0.3.4](https://github.com/pkgforge-dev/appimagetool/compare/0.3.3...0.3.4) - 2026-08-30
+
 ## [0.3.3](https://github.com/pkgforge-dev/appimagetool/compare/0.3.2...0.3.3) - 2026-08-03
 
 ## [0.3.2](https://github.com/pkgforge-dev/appimagetool/compare/0.3.1...0.3.2) - 2026-06-07
