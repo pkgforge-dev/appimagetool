@@ -119,11 +119,14 @@ impl Config {
         let appimage_arch = args
             .appimage_arch
             .or_else(|| env_opt("APPIMAGE_ARCH"))
-            .unwrap_or_else(|| match env::consts::ARCH {
-                "x86_64" => "x86_64".to_string(),
-                "aarch64" => "aarch64".to_string(),
-                other => other.to_string(),
-            });
+            .unwrap_or_else(|| env::consts::ARCH.to_string());
+        // Normalize rust arch spellings to the uname -m equivalent so the
+        // download URLs resolve (e.g. powerpc64le -> ppc64le).
+        let appimage_arch = match appimage_arch.as_str() {
+            "powerpc64" => "ppc64".to_string(),
+            "powerpc64le" => "ppc64le".to_string(),
+            other => other.to_string(),
+        };
         let arch = args.arch.unwrap_or_else(|| appimage_arch.clone());
 
         let appdir = args.appdir.unwrap_or_else(|| PathBuf::from("./AppDir"));

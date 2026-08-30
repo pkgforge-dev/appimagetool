@@ -14,7 +14,9 @@ const MOUNT_MARKER: &[u8] = b"URUNTIME_MOUNT=";
 /// Default uruntime download URL pattern. Pinned for reproducible builds;
 /// override with `--runtime-url` / `URUNTIME_LINK` to track a different
 /// release. `{arch}` gets replaced with the target architecture.
-const DEFAULT_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.5.9/uruntime-appimage-dwarfs-lite-{arch}";
+/// Points at our dwarfs-only uruntime fork, which publishes builds for
+/// every architecture appimagetool supports.
+const DEFAULT_URL_TEMPLATE: &str = "https://github.com/pkgforge-dev/Anylinux-uruntime/releases/download/1.0.0/uruntime-appimage-lite-{arch}";
 
 /// Ensure a runtime binary is available. Returns the path to the runtime.
 ///
