@@ -120,7 +120,7 @@ jobs:
             TENV=$(echo "${{ matrix.build.TARGET }}" | tr 'a-z-' 'A-Z_')
             export CARGO_TARGET_${TENV}_LINKER="$RUNNER_TEMP/zigcc"
             # ring/zstd-style C build scripts need a target C compiler
-            export CC_${{ matrix.build.TARGET }}="$RUNNER_TEMP/zigcc"
+            export CC_$(echo "${{ matrix.build.TARGET }}" | tr '-' '_')="$RUNNER_TEMP/zigcc"
             # CARGO_TARGET_RUSTFLAGS (not RUSTFLAGS) so the flags do not leak
             # into build scripts
             export CARGO_TARGET_RUSTFLAGS="-C target-feature=+crt-static -C link-self-contained=no"
