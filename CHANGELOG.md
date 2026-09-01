@@ -1,4 +1,10 @@
 
+## [0.3.6] - 2026-09-01
+
+### ◀️ Revert
+
+- Revert zstd 19, doesn't really improve compression time and increases appimage size by 7% - ([1bd21ef](https://github.com/pkgforge-dev/appimagetool/commit/1bd21efadbc72ecc5f3d2fbaea9b7a789f824c83))
+
 ## [0.3.5] - 2026-09-01
 
 ### 🐛 Bug Fixes
