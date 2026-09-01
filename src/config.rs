@@ -167,7 +167,7 @@ impl Config {
 
         let dwarfs_comp = args
             .dwarfs_comp
-            .unwrap_or_else(|| "zstd:level=22 -S26 -B6".to_string());
+            .unwrap_or_else(|| "zstd:level=19 -S26 -B6".to_string());
 
         Ok(Config {
             appdir,

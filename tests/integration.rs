@@ -195,7 +195,7 @@ fn test_config_defaults() {
     assert!(!config.devel_release);
     assert_eq!(config.profile_timeout, 10);
     // Default compression
-    assert_eq!(config.dwarfs_comp, "zstd:level=22 -S26 -B6");
+    assert_eq!(config.dwarfs_comp, "zstd:level=19 -S26 -B6");
 }
 
 #[test]
