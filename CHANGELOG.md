@@ -1,4 +1,11 @@
 
+## [0.3.5] - 2026-09-01
+
+### 🐛 Bug Fixes
+
+- Fix the CC env var name (dashes are not valid in identifiers) - ([b74bca3](https://github.com/pkgforge-dev/appimagetool/commit/b74bca366285b3678b7a83c6479d1577e3aa2d55))
+- Fix the rust toolchain selector after pinning the action - ([a18d3c5](https://github.com/pkgforge-dev/appimagetool/commit/a18d3c51b6203e8171e77123d8e8e45d8ace011b))
+
 ## [0.3.4](https://github.com/pkgforge-dev/appimagetool/compare/0.3.3...0.3.4) - 2026-08-30
 
 ## [0.3.3](https://github.com/pkgforge-dev/appimagetool/compare/0.3.2...0.3.3) - 2026-08-03
