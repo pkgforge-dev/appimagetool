@@ -88,30 +88,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/zig"
           tar xJf "$RUNNER_TEMP/zig.tar.xz" -C "$RUNNER_TEMP/zig" --strip-components=1
 
+      # with -C link-self-contained=no (set below via the per-target
+      # CARGO_TARGET_<triple>_RUSTFLAGS) rustc passes no crt objects, so
+      # every linker arg can go straight to zig cc. the cc crate (ring)
+      # still passes rust triples, which get translated here.
       - name: Create zig-cc linker wrapper
         if: ${{ matrix.build.ZIGTARGET }}
         run: |
-          {
-            echo '#!/bin/bash'
-            echo 'args=()'
-            echo 'for a in "$@"; do'
-            echo '  case "$a" in'
-            echo '    *fix-cortex-a53-843419*) continue ;;'
-            echo '    -nostartfiles) continue ;;'
-            echo '    crt1.o|Scrt1.o|rcrt1.o|crti.o|crtn.o) continue ;;'
-            echo '    crtbegin.o|crtend.o|crtbeginS.o|crtendS.o) continue ;;'
-            echo '    -lc) continue ;;'
-            echo '    */self-contained/*.o) continue ;;'
-            echo '    --target=*-unknown-linux-*)'
-            echo '      t="${a#--target=}"'
-            echo '      t="${t/-unknown-linux-/-linux-}"'
-            echo '      args+=("-target" "$t")'
-            echo '      ;;'
-            echo '    *) args+=("$a") ;;'
-            echo '  esac'
-            echo 'done'
-            echo "exec \"$RUNNER_TEMP/zig/zig\" cc -target ${{ matrix.build.ZIGTARGET }} \"\${args[@]}\""
-          } > "$RUNNER_TEMP/zigcc"
+          printf '#!/bin/bash\nexec "%s" cc -target %s "$@"\n' \
+            "$RUNNER_TEMP/zig/zig" "${{ matrix.build.ZIGTARGET }}" > "$RUNNER_TEMP/zigcc"
           chmod +x "$RUNNER_TEMP/zigcc"
 
       - name: Build
@@ -123,7 +108,7 @@ jobs:
             export CC_$(echo "${{ matrix.build.TARGET }}" | tr '-' '_')="$RUNNER_TEMP/zigcc"
             # CARGO_TARGET_RUSTFLAGS (not RUSTFLAGS) so the flags do not leak
             # into build scripts
-            export CARGO_TARGET_RUSTFLAGS="-C target-feature=+crt-static -C link-self-contained=no"
+            export CARGO_TARGET_${TENV}_RUSTFLAGS="-C target-feature=+crt-static -C link-self-contained=no"
             export ZIG_GLOBAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
             export ZIG_LOCAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
           fi
