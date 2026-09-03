@@ -1,4 +1,6 @@
 
+## [0.3.7](https://github.com/pkgforge-dev/appimagetool/compare/0.3.6...0.3.7) - 2026-09-03
+
 ## [0.3.6] - 2026-09-01
 
 ### ◀️ Revert
