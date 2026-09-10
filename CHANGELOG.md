@@ -1,4 +1,10 @@
 
+## [0.4.2](https://github.com/pkgforge-dev/appimagetool/compare/0.4.1...0.4.2) - 2026-09-10
+
+### 🐛 Bug Fixes
+
+- Fix `ppc64le` getting BE uruntime - ([1ed1dae](https://github.com/pkgforge-dev/appimagetool/commit/1ed1dae24cf831625e17c729f4164673b979424e))
+
 ## [0.4.1](https://github.com/pkgforge-dev/appimagetool/compare/0.4.0...0.4.1) - 2026-09-10
 
 ### 🐛 Bug Fixes
