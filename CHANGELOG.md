@@ -1,4 +1,10 @@
 
+## [0.4.1](https://github.com/pkgforge-dev/appimagetool/compare/0.4.0...0.4.1) - 2026-09-10
+
+### 🐛 Bug Fixes
+
+- Fix typo - ([08e3bab](https://github.com/pkgforge-dev/appimagetool/commit/08e3baba765b28687b518a141ef2f081924a3d90))
+
 ## [0.4.0](https://github.com/pkgforge-dev/appimagetool/compare/0.3.6...0.4.0) - 2026-09-10
 
 ## [0.3.6] - 2026-09-01
