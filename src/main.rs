@@ -75,6 +75,10 @@ struct Cli {
     #[arg(long, env = "TMPDIR", default_value = "/tmp")]
     tmpdir: Option<PathBuf>,
 
+    /// Print license and third-party notices for this build, then exit
+    #[arg(long)]
+    license: bool,
+
     /// Increase verbosity (can be repeated: -v, -vv)
     #[arg(short = 'v', long, action = clap::ArgAction::Count)]
     verbose: u8,
@@ -86,6 +90,11 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
+
+    if cli.license {
+        print!("{}", appimagetool::embed::notices());
+        return;
+    }
 
     // Initialize logger: verbosity is (verbose count) - (quiet count)
     let verbosity = cli.verbose as i8 - cli.quiet as i8;

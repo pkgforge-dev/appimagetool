@@ -329,7 +329,7 @@ fn test_error_messages() {
 fn test_uruntime_download_checksum_each_arch() {
     use sha2::{Digest, Sha256};
 
-    for (arch, expected) in appimagetool::uruntime::RELEASE_CHECKSUMS {
+    for (arch, expected) in appimagetool::pinned::URUNTIME_CHECKSUMS {
         let tmp = TempDir::new("appimagetool-uruntime-dl");
         let config = Config::from_cli_args(CliArgs {
             appdir: Some(tmp.path().join("AppDir")),
@@ -339,10 +339,9 @@ fn test_uruntime_download_checksum_each_arch() {
         })
         .unwrap();
 
-        let runtime =
-            appimagetool::uruntime::resolve_runtime(&config).unwrap_or_else(|e| {
-                panic!("resolve_runtime failed for {arch}: {e}");
-            });
+        let runtime = appimagetool::uruntime::resolve_runtime(&config).unwrap_or_else(|e| {
+            panic!("resolve_runtime failed for {arch}: {e}");
+        });
 
         // The work copy must exist, be executable, and be a valid ELF.
         let work = fs::read(&runtime).unwrap_or_else(|e| {
@@ -350,20 +349,23 @@ fn test_uruntime_download_checksum_each_arch() {
         });
         assert_eq!(&work[..4], b"\x7fELF", "{arch}: not an ELF binary");
 
-        // The cached pristine binary must match the pinned checksum.
-        let cached = tmp.path().join(format!("uruntime-{arch}"));
-        assert!(cached.exists(), "{arch}: cached binary missing");
-        let file = fs::read(&cached).unwrap();
-        let actual = format!("{:x}", Sha256::digest(&file));
-        assert_eq!(
-            actual, *expected,
-            "{arch}: cached uruntime checksum mismatch"
-        );
-        assert_eq!(
-            Sha256::digest(&work),
-            Sha256::digest(&file),
-            "{arch}: work copy differs from verified cache"
-        );
+        // Whichever route produced it, the resolved runtime must be the pinned
+        // artifact byte for byte.
+        let actual = format!("{:x}", Sha256::digest(&work));
+        assert_eq!(actual, *expected, "{arch}: uruntime checksum mismatch");
+
+        // An embedded blob short-circuits the cache, so only assert the cache
+        // was populated when this build actually downloaded.
+        if appimagetool::embed::uruntime(arch).is_none() {
+            let cached = tmp.path().join(format!("uruntime-{arch}"));
+            assert!(cached.exists(), "{arch}: cached binary missing");
+            let file = fs::read(&cached).unwrap();
+            assert_eq!(
+                Sha256::digest(&work),
+                Sha256::digest(&file),
+                "{arch}: work copy differs from verified cache"
+            );
+        }
     }
 }
 

@@ -1,0 +1,37 @@
+mkdwarfs is part of the DwarFS project.
+
+Copyright (c) Marcus Holland-Moritz
+
+The DwarFS components that *write* filesystem images, dwarfs_writer and
+dwarfs_rewrite, are licensed under the GNU General Public License version 3 or
+later. The `dwarfs-universal` binary contains them by way of `mkdwarfs`.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+The full license text accompanies this notice as GPL-3.0.txt.
+
+WRITTEN OFFER AND SOURCE AVAILABILITY (GPL-3.0 section 6d)
+
+The Corresponding Source for the embedded `mkdwarfs` is the DwarFS source
+distribution for the pinned release, published upstream as:
+
+    https://github.com/mhx/dwarfs/releases/download/v0.15.6/dwarfs-0.15.6.tar.xz
+
+Anyone redistributing a binary built with `--features embed-mkdwarfs` is
+conveying a GPL-3.0 work and is responsible for keeping that Corresponding
+Source available to recipients for as long as the binary is offered. Section 6d
+permits hosting it elsewhere, including on a third-party server, provided clear
+directions accompany the object code. Because upstream could retag or remove
+that release, mirror the tarball alongside your own binaries rather than
+relying on the upstream URL alone.

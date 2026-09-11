@@ -88,6 +88,7 @@ Options:
       --mkdwarfs <PATH>            Path to mkdwarfs binary [env: DWARFS_CMD]
       --dwarfs-url <URL>           URL to download mkdwarfs from [env: DWARFS_LINK]
       --tmpdir <TMPDIR>            Temporary directory [env: TMPDIR] [default: /tmp]
+      --license                    Print license and third-party notices for this build
   -v, --verbose...                 Increase verbosity (-v, -vv)
   -q, --quiet...                   Suppress informational output (-q, -qq)
   -h, --help                       Print help
@@ -136,6 +137,86 @@ You can also pin the filename outright with `--name` / `OUTNAME`.
 cargo build --release
 ```
 
+### Embedding the helper binaries
+
+By default appimagetool downloads its helpers on demand: the pinned uruntime
+always, and `mkdwarfs` only when it is not already on `$PATH`. Two optional
+features bake them into the binary instead, so a build needs no network access
+at AppImage build time.
+
+```sh
+# Embed the pinned uruntime. Stays MIT.
+cargo build --release --features embed-uruntime
+
+# Also embed mkdwarfs. See the licensing note below before using this.
+cargo build --release --features embed-uruntime,embed-mkdwarfs
+```
+
+Released binaries are built with both features, so they need no network at
+all for helper resolution. That makes the published artifacts
+GPL-3.0-or-later; see [Licensing](#licensing).
+
+Embedded blobs are architecture specific. A build that embeds a helper for its
+own target still falls back to downloading when asked for a different
+`--appimage-arch`, and an explicit `--runtime` / `--mkdwarfs` path or a custom
+`--runtime-url` / `--dwarfs-url` always wins over an embedded copy.
+
+#### Building offline
+
+`build.rs` resolves each blob in this order, verifying the pinned SHA-256 at
+every step:
+
+1. an explicit path in `URUNTIME_EMBED_PATH` / `MKDWARFS_EMBED_PATH`, or a file
+   named `{uruntime,mkdwarfs}-{arch}` inside `APPIMAGETOOL_EMBED_DIR`
+2. a digest-valid file in the in-tree `.embed-cache/` directory
+3. a download from the pinned upstream URL
+
+Packagers building in a network-isolated sandbox should pre-fetch the artifact
+and use step 1, which never reaches the network:
+
+```sh
+URUNTIME_EMBED_PATH=/path/to/uruntime-x86_64 \
+  cargo build --release --features embed-uruntime
+```
+
+A default build runs no network requests in `build.rs` at all, so it works
+unchanged on docs.rs and in distro build sandboxes.
+
+### Licensing
+
+appimagetool's own source is MIT in every configuration. The `embed-mkdwarfs`
+feature changes the license of the resulting **binary**, because DwarFS is split
+licensed: the code that reads images is MIT, while the `mkdwarfs` writer is
+GPL-3.0.
+
+| Build | Embedded | Binary license |
+| --- | --- | --- |
+| default | nothing | MIT |
+| `embed-uruntime` | uruntime + DwarFS reader | MIT |
+| `embed-mkdwarfs` | `dwarfs-universal` | GPL-3.0-or-later |
+
+`embed-uruntime` is MIT throughout because it pins the `-lite` uruntime variant,
+which carries only DwarFS `dwarfs-fuse-extract` (the MIT reader and extractor)
+rather than `dwarfs-universal`.
+
+**The binaries published on the releases page are GPL-3.0-or-later**, because
+they are built with `embed-mkdwarfs`. Each release therefore also ships the
+DwarFS Corresponding Source as
+`appimagetool-corresponding-source-dwarfs-<version>.tar.xz`, and the release
+tarballs include `licenses/`, which holds the full GPL-3.0 text along with the
+MIT notices for uruntime and the DwarFS reader.
+
+If you need an MIT-licensed binary, build from source without `embed-mkdwarfs`.
+The crate source itself is MIT in every configuration, so `cargo build --release`
+or `--features embed-uruntime` both give you an MIT artifact.
+
+Anyone redistributing a GPL-3.0 build is conveying a GPL-3.0 work and must keep
+that Corresponding Source available to recipients for as long as the binary is
+offered. See `licenses/mkdwarfs-GPL-3.0.txt` for the details.
+
+`appimagetool --license` reports the effective license of any build along with
+the notices for whatever that build actually embeds.
+
 ### Running tests
 
 ```sh
@@ -149,6 +230,8 @@ cargo test --all-features -- --ignored
 ## Project layout
 
 ```
+build.rs          resolves the optional embedded helper blobs
+licenses/         notices shipped with builds that embed a helper
 src/
 ├── main.rs       CLI entry point (clap)
 ├── lib.rs        library root
@@ -157,8 +240,10 @@ src/
 ├── desktop.rs    .desktop parsing and metadata
 ├── dwarfs.rs     mkdwarfs resolution, image building, profiling
 ├── elf.rs        ELF section read / write / patch
+├── embed.rs      embedded helper access + license reporting
 ├── error.rs      error types with actionable hints
 ├── log.rs        verbosity-gated logger
+├── pinned.rs     pinned upstream URLs + SHA-256 digests (shared with build.rs)
 ├── uruntime.rs   runtime download, caching, configuration
 └── util.rs       atomic downloads, sanitization, ELF detection
 ```

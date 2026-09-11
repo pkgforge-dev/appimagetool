@@ -7,14 +7,19 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use crate::config::Config;
+use crate::embed;
 use crate::error::{Error, Result};
+use crate::pinned;
 use crate::util;
 
-const DEFAULT_DWARFS_URL_TEMPLATE: &str =
-    "https://github.com/mhx/dwarfs/releases/download/v0.15.6/dwarfs-universal-0.15.6-Linux-{arch}";
-
-/// Resolve the mkdwarfs binary path. Checks user-provided path, then $PATH,
-/// then downloads to tmpdir.
+/// Resolve the mkdwarfs binary path. Checks the user-provided path, then
+/// `$PATH`, then a blob embedded by the `embed-mkdwarfs` feature, then downloads
+/// to tmpdir.
+///
+/// `mkdwarfs` runs on the build host, so the embedded blob only applies when the
+/// host and requested architectures match. A cross-arch build falls through to
+/// downloading, preserving the existing behaviour of fetching the asset for
+/// `config.appimage_arch`.
 pub fn resolve_mkdwarfs(config: &Config) -> Result<PathBuf> {
     // User-provided path
     if let Some(ref path) = config.mkdwarfs {
@@ -27,18 +32,37 @@ pub fn resolve_mkdwarfs(config: &Config) -> Result<PathBuf> {
         )));
     }
 
-    // Check $PATH
+    // Check $PATH. A system mkdwarfs still wins over an embedded copy: the
+    // feature exists to avoid the download, not to override the host toolchain.
     if let Ok(path) = which("mkdwarfs") {
         return Ok(path);
     }
 
     let cached = config.tmpdir.join("mkdwarfs");
-    let url = config
-        .dwarfs_url
-        .as_deref()
-        .unwrap_or(DEFAULT_DWARFS_URL_TEMPLATE)
-        .replace("{arch}", &config.appimage_arch);
-    util::ensure_cached_binary(&cached, &url, "mkdwarfs", None)?;
+
+    if config.dwarfs_url.is_none()
+        && let Some(bytes) = embed::mkdwarfs(&config.appimage_arch)
+    {
+        crate::log_info!("Using embedded mkdwarfs for {}...", config.appimage_arch);
+        embed::materialize(bytes, &cached)?;
+        return Ok(cached);
+    }
+
+    // Checksums are only known for the pinned default URL; user-supplied URLs
+    // are downloaded without verification.
+    let expected_checksum = if config.dwarfs_url.is_none() {
+        pinned::checksum_for(pinned::MKDWARFS_CHECKSUMS, &config.appimage_arch)
+    } else {
+        None
+    };
+    let url = pinned::url_for(
+        config
+            .dwarfs_url
+            .as_deref()
+            .unwrap_or(pinned::MKDWARFS_URL_TEMPLATE),
+        &config.appimage_arch,
+    );
+    util::ensure_cached_binary(&cached, &url, "mkdwarfs", expected_checksum)?;
     Ok(cached)
 }
 

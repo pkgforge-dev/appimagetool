@@ -4,6 +4,18 @@ version = "0.4.2"
 edition = "2024"
 description = "A tool for creating AppImages"
 license = "MIT"
+# `license` describes this crate's source, which is MIT in every
+# configuration. The `embed-mkdwarfs` feature links the GPL-3.0 DwarFS
+# writer into the built artifact; see `embed::effective_license`.
+
+[features]
+default = []
+# Embed the pinned uruntime in the binary instead of downloading it.
+# MIT throughout: uruntime and the DwarFS reader it carries are both MIT.
+embed-uruntime = []
+# Embed the pinned mkdwarfs in the binary instead of downloading it.
+# This makes the resulting artifact a GPL-3.0-or-later work.
+embed-mkdwarfs = []
 
 [dependencies]
 clap = { version = "4.6.1", features = ["derive", "env"] }
@@ -12,3 +24,6 @@ sha2 = "0.10.9"
 thiserror = "2.0.18"
 ureq = "3.3.0"
 zsync-rs = "0.2.0"
+
+[build-dependencies]
+sha2 = "0.10.9"

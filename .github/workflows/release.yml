@@ -15,6 +15,33 @@ permissions:
   id-token: write
 
 jobs:
+  publish-corresponding-source:
+    name: Publish GPL corresponding source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Fetch and verify DwarFS source
+        shell: bash
+        run: |
+          set -euo pipefail
+          url=$(grep -o 'https://github.com/mhx/dwarfs/releases/download/v[0-9.]*/dwarfs-[0-9.]*\.tar\.xz' src/pinned.rs | head -1)
+          sha=$(grep -A2 'MKDWARFS_SOURCE_SHA256' src/pinned.rs | grep -o '[0-9a-f]\{64\}' | head -1)
+          test -n "$url" && test -n "$sha"
+          out="appimagetool-corresponding-source-$(basename "$url")"
+          curl -fL --retry 3 -o "$out" "$url"
+          echo "$sha  $out" | sha256sum -c -
+          echo "ASSET=$out" >> "$GITHUB_ENV"
+
+      - name: Upload to release
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.ASSET }}
+          overwrite: true
+          tag: ${{ github.ref }}
+
   publish-binaries:
     name: Publish binaries
     runs-on: ${{ matrix.build.RUNNER }}
@@ -127,13 +154,15 @@ jobs:
             export ZIG_GLOBAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
             export ZIG_LOCAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
           fi
-          cargo build --release --locked --target ${{ matrix.build.TARGET }} -Z build-std=std,panic_abort
+          cargo build --release --locked --features embed-uruntime,embed-mkdwarfs \
+            --target ${{ matrix.build.TARGET }} -Z build-std=std,panic_abort
 
       - name: Prepare release assets
         shell: bash
         run: |
           mkdir -p release
           cp {LICENSE,README.md} release/
+          cp -r licenses release/
           cp "target/${{ matrix.build.TARGET }}/release/appimagetool" release/
 
       - name: Create release artifacts
