@@ -83,6 +83,11 @@ jobs:
               TARGET: powerpc64le-unknown-linux-musl,
               ZIGTARGET: powerpc64le-linux-musl,
             }
+        variant:
+          # Plain build: MIT, resolves helpers by download at AppImage build time.
+          - { SUFFIX: "", FEATURES: "" }
+          # Full build: embeds both helpers, offline, GPL-3.0-or-later.
+          - { SUFFIX: "-full", FEATURES: "embed-uruntime,embed-mkdwarfs" }
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -142,6 +147,7 @@ jobs:
           chmod +x "$RUNNER_TEMP/zigcc"
 
       - name: Build
+        shell: bash
         run: |
           if [ -n "${{ matrix.build.ZIGTARGET }}" ]; then
             TENV=$(echo "${{ matrix.build.TARGET }}" | tr 'a-z-' 'A-Z_')
@@ -154,7 +160,11 @@ jobs:
             export ZIG_GLOBAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
             export ZIG_LOCAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
           fi
-          cargo build --release --locked --features embed-uruntime,embed-mkdwarfs \
+          FEATURE_ARGS=()
+          if [ -n "${{ matrix.variant.FEATURES }}" ]; then
+            FEATURE_ARGS+=(--features "${{ matrix.variant.FEATURES }}")
+          fi
+          cargo build --release --locked "${FEATURE_ARGS[@]}" \
             --target ${{ matrix.build.TARGET }} -Z build-std=std,panic_abort
 
       - name: Prepare release assets
@@ -162,22 +172,25 @@ jobs:
         run: |
           mkdir -p release
           cp {LICENSE,README.md} release/
-          cp -r licenses release/
+          if [ -n "${{ matrix.variant.SUFFIX }}" ]; then
+            cp -r licenses release/
+          fi
           cp "target/${{ matrix.build.TARGET }}/release/appimagetool" release/
 
       - name: Create release artifacts
         shell: bash
         run: |
-          cp release/appimagetool appimagetool-${{ matrix.build.NAME }}
-          b3sum appimagetool-${{ matrix.build.NAME }} > appimagetool-${{ matrix.build.NAME }}.b3sum
-          tar -cJvf appimagetool-${{ matrix.build.NAME }}.tar.xz release/
-          b3sum appimagetool-${{ matrix.build.NAME }}.tar.xz > appimagetool-${{ matrix.build.NAME }}.tar.xz.b3sum
+          name="appimagetool${{ matrix.variant.SUFFIX }}-${{ matrix.build.NAME }}"
+          cp release/appimagetool "$name"
+          b3sum "$name" > "$name.b3sum"
+          tar -cJvf "$name.tar.xz" release/
+          b3sum "$name.tar.xz" > "$name.tar.xz.b3sum"
 
       - name: Upload to release
         uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: appimagetool-${{ matrix.build.NAME }}*
+          file: appimagetool${{ matrix.variant.SUFFIX }}-${{ matrix.build.NAME }}*
           file_glob: true
           overwrite: true
           tag: ${{ github.ref }}
@@ -185,5 +198,5 @@ jobs:
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
-          subject-name: "appimagetool-${{ matrix.build.NAME }}"
-          subject-path: appimagetool-${{ matrix.build.NAME }}*
+          subject-name: "appimagetool${{ matrix.variant.SUFFIX }}-${{ matrix.build.NAME }}"
+          subject-path: appimagetool${{ matrix.variant.SUFFIX }}-${{ matrix.build.NAME }}*

@@ -152,9 +152,10 @@ cargo build --release --features embed-uruntime
 cargo build --release --features embed-uruntime,embed-mkdwarfs
 ```
 
-Released binaries are built with both features, so they need no network at
-all for helper resolution. That makes the published artifacts
-GPL-3.0-or-later; see [Licensing](#licensing).
+Release artifacts ship in two variants. `appimagetool-<arch>` is built with no
+features: it is MIT and downloads its helpers on demand. `appimagetool-full-<arch>`
+is built with both features, so it needs no network at all for helper
+resolution — which makes it GPL-3.0-or-later. See [Licensing](#licensing).
 
 Embedded blobs are architecture specific. A build that embeds a helper for its
 own target still falls back to downloading when asked for a different
@@ -199,16 +200,18 @@ GPL-3.0.
 which carries only DwarFS `dwarfs-fuse-extract` (the MIT reader and extractor)
 rather than `dwarfs-universal`.
 
-**The binaries published on the releases page are GPL-3.0-or-later**, because
-they are built with `embed-mkdwarfs`. Each release therefore also ships the
-DwarFS Corresponding Source as
-`appimagetool-corresponding-source-dwarfs-<version>.tar.xz`, and the release
-tarballs include `licenses/`, which holds the full GPL-3.0 text along with the
-MIT notices for uruntime and the DwarFS reader.
+**The `appimagetool-full-<arch>` artifacts published on the releases page are
+GPL-3.0-or-later**, because they are built with `embed-mkdwarfs`. The plain
+`appimagetool-<arch>` artifacts are MIT and download their helpers on demand.
+Each release therefore also ships the DwarFS Corresponding Source as
+`appimagetool-corresponding-source-dwarfs-<version>.tar.xz`, and the
+`appimagetool-full-<arch>` tarballs include `licenses/`, which holds the full
+GPL-3.0 text along with the MIT notices for uruntime and the DwarFS reader.
 
-If you need an MIT-licensed binary, build from source without `embed-mkdwarfs`.
-The crate source itself is MIT in every configuration, so `cargo build --release`
-or `--features embed-uruntime` both give you an MIT artifact.
+If you need an MIT-licensed binary, use the plain `appimagetool-<arch>`
+artifact or build from source without `embed-mkdwarfs`. The crate source itself
+is MIT in every configuration, so `cargo build --release` or
+`--features embed-uruntime` both give you an MIT artifact.
 
 Anyone redistributing a GPL-3.0 build is conveying a GPL-3.0 work and must keep
 that Corresponding Source available to recipients for as long as the binary is
