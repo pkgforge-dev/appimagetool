@@ -1,4 +1,10 @@
 
+## [0.5.0](https://github.com/pkgforge-dev/appimagetool/compare/0.4.2...0.5.0) - 2026-09-12
+
+### ⛰️  Features
+
+- Add opt-in embedded uruntime and mkdwarfs ([#31](https://github.com/pkgforge-dev/appimagetool/pull/31)) - ([9c1143e](https://github.com/pkgforge-dev/appimagetool/commit/9c1143ea89d691ac3e3eaf8c1747f8e108379060))
+
 ## [0.4.2](https://github.com/pkgforge-dev/appimagetool/compare/0.4.1...0.4.2) - 2026-09-10
 
 ### 🐛 Bug Fixes
