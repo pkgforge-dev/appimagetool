@@ -1,4 +1,10 @@
 
+## [0.5.1](https://github.com/pkgforge-dev/appimagetool/compare/0.5.0...0.5.1) - 2026-09-13
+
+### ⚙️ Miscellaneous Tasks
+
+- Build releases with stable Rust instead of nightly - ([60f7258](https://github.com/pkgforge-dev/appimagetool/commit/60f7258a6bc8ea1771ee3da76e46146af37b8246))
+
 ## [0.5.0](https://github.com/pkgforge-dev/appimagetool/compare/0.4.2...0.5.0) - 2026-09-12
 
 ### ⛰️  Features
