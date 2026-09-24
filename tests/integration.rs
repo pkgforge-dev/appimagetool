@@ -408,3 +408,136 @@ fn test_full_build_pipeline() {
     }
     assert!(found, "no .AppImage file found in output directory");
 }
+
+// ─── Smoke test: package a trivial AppDir and run the AppImage ───────
+
+/// A minimal AppDir whose `AppRun` prints `success`.
+fn create_smoke_appdir(dir: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::create_dir_all(dir.join("usr/bin")).unwrap();
+    let apprun = dir.join("AppRun");
+    fs::write(&apprun, "#!/bin/sh\necho success\n").unwrap();
+    fs::set_permissions(&apprun, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let png_header: [u8; 8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    fs::write(dir.join(".DirIcon"), png_header).unwrap();
+
+    fs::write(
+        dir.join("smoke.desktop"),
+        "[Desktop Entry]\n\
+         Type=Application\n\
+         Name=Smoke\n\
+         Exec=smoke\n\
+         Icon=smoke\n\
+         Categories=Utility;\n",
+    )
+    .unwrap();
+}
+
+/// The asset-architecture spelling of the machine running the tests, so it can
+/// be compared against a requested runtime arch.
+fn host_asset_arch() -> String {
+    appimagetool::pinned::target_asset_arch(std::env::consts::ARCH, cfg!(target_endian = "little"))
+}
+
+/// The binfmt_misc handler name QEMU registers for `arch`, if it is one the
+/// suite knows how to emulate.
+fn binfmt_handler(arch: &str) -> Option<String> {
+    match arch {
+        "aarch64" | "riscv64" | "loongarch64" | "ppc64" | "ppc64le" => Some(format!("qemu-{arch}")),
+        _ => None,
+    }
+}
+
+/// Whether the kernel can execute `arch` binaries through a registered QEMU
+/// handler. Native execution needs no handler.
+fn binfmt_enabled(arch: &str) -> bool {
+    let Some(handler) = binfmt_handler(arch) else {
+        return false;
+    };
+    fs::read_to_string(format!("/proc/sys/fs/binfmt_misc/{handler}"))
+        .is_ok_and(|entry| entry.contains("enabled"))
+}
+
+/// Package a minimal AppDir and execute the resulting AppImage, asserting its
+/// `AppRun` ran. This is the only test that exercises a finished AppImage the
+/// way a user does, so it catches runtime/packaging regressions the other
+/// tests cannot see.
+///
+/// Needs `mkdwarfs` for the host and network access to fetch the pinned
+/// uruntime, so it is ignored by default; CI runs it per architecture with
+/// `--ignored`. `APPIMAGETOOL_SMOKE_ARCH` selects the runtime architecture
+/// (default: the host) and `APPIMAGETOOL_SMOKE_MKDWARFS` overrides the host
+/// `mkdwarfs` path. Foreign architectures need QEMU user emulation registered
+/// with binfmt_misc, which is what the `qemu-user-static` package sets up.
+#[test]
+#[ignore = "packages and runs an AppImage; needs mkdwarfs, network, and QEMU for foreign arches"]
+fn smoke_builds_and_runs_appimage() {
+    let arch = std::env::var("APPIMAGETOOL_SMOKE_ARCH").unwrap_or_else(|_| host_asset_arch());
+    let host = host_asset_arch();
+
+    if arch != host && !binfmt_enabled(&arch) {
+        panic!(
+            "cannot run the {arch} AppImage on this {host} host: binfmt_misc has no enabled `{}` \
+             handler. Install qemu-user-static, which registers the QEMU interpreters with the \
+             `F` flag needed to execute the runtime's embedded helpers.",
+            binfmt_handler(&arch).unwrap_or_else(|| format!("qemu-{arch}"))
+        );
+    }
+
+    let tmp = TempDir::new("appimagetool-smoke");
+    let appdir = tmp.path().join("AppDir");
+    let output_dir = tmp.path().join("output");
+    let build_tmp = tmp.path().join("build");
+    let run_tmp = tmp.path().join("run");
+    for dir in [&appdir, &output_dir, &build_tmp, &run_tmp] {
+        fs::create_dir_all(dir).unwrap();
+    }
+
+    create_smoke_appdir(&appdir);
+
+    let mut args = CliArgs {
+        appdir: Some(appdir),
+        output: Some(output_dir.clone()),
+        appimage_arch: Some(arch.clone()),
+        arch: Some(arch.clone()),
+        dwarfs_comp: Some("zstd:level=1".to_string()), // fast compression for a smoke test
+        tmpdir: Some(build_tmp),
+        ..Default::default()
+    };
+    if let Some(mkdwarfs) = std::env::var_os("APPIMAGETOOL_SMOKE_MKDWARFS") {
+        args.mkdwarfs = Some(PathBuf::from(mkdwarfs));
+    }
+    let config = Config::from_cli_args(args).unwrap();
+
+    appimagetool::appimage::build(&config).unwrap();
+
+    let appimage = fs::read_dir(&output_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| path.extension().and_then(|ext| ext.to_str()) == Some("AppImage"))
+        .expect("build produced no .AppImage");
+
+    // Mounting through FUSE is unavailable on CI runners and under QEMU's user
+    // emulation, so drive the runtime's extraction path instead. The AppImage
+    // is still executed end to end.
+    let output = std::process::Command::new(&appimage)
+        .env("TMPDIR", &run_tmp)
+        .env("APPIMAGE_EXTRACT_AND_RUN", "1")
+        .output()
+        .unwrap_or_else(|err| panic!("failed to execute {}: {err}", appimage.display()));
+
+    assert!(
+        output.status.success(),
+        "{arch} AppImage exited with {}\n--- stdout ---\n{}\n--- stderr ---\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("success"),
+        "{arch} AppImage did not print `success`\n--- stdout ---\n{}",
+        String::from_utf8_lossy(&output.stdout),
+    );
+}
