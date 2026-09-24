@@ -1,4 +1,6 @@
 
+## [0.5.2](https://github.com/pkgforge-dev/appimagetool/compare/0.5.1...0.5.2) - 2026-09-24
+
 ## [0.5.1](https://github.com/pkgforge-dev/appimagetool/compare/0.5.0...0.5.1) - 2026-09-13
 
 ### ⚙️ Miscellaneous Tasks
