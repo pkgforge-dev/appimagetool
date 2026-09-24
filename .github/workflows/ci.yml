@@ -1,0 +1,115 @@
+name: appimagetool CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          toolchain: stable
+
+      # The smoke matrix only runs the `--ignored` test, so without this the
+      # arch-resolution and pin tests — the suite's only other coverage — would
+      # never run in CI.
+      - name: Run the test suite
+        run: cargo test --locked
+
+  smoke:
+    name: Smoke ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every architecture the release workflow publishes a runtime for.
+        arch:
+          - x86_64
+          - aarch64
+          - riscv64
+          - loongarch64
+          - ppc64
+          - ppc64le
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          toolchain: stable
+
+      - name: Install QEMU user emulation
+        if: matrix.arch != 'x86_64'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-user-static
+
+          # The handlers qemu-user-static ships require the eight EI_PAD bytes
+          # (offset 8) to be zero, but an AppImage writes its "AI\x02" magic
+          # there, so the stock entries never match an AppImage and exec fails
+          # with "Exec format error". Replace them with handlers that wildcard
+          # the padding, and use the `F` flag: the runtime executes its embedded
+          # helpers from a memfd, which only a fix-binary handler can run.
+          zero='\x00'
+          z10="${zero}${zero}${zero}${zero}${zero}${zero}${zero}${zero}${zero}${zero}"
+          z11="${z10}${zero}"
+          mask="\xff\xff\xff\xff\xff\xff\xff${z11}\xff\xff"
+
+          register() { # $1 arch, $2 ELF class/data prefix, $3 e_machine
+            local handler="/proc/sys/fs/binfmt_misc/qemu-$1"
+            if [ -f "$handler" ]; then
+              echo -1 | sudo tee "$handler" >/dev/null
+            fi
+            printf '%s' ":qemu-$1:M::$2$z10$3:${mask}:/usr/bin/qemu-$1-static:FP" \
+              | sudo tee /proc/sys/fs/binfmt_misc/register >/dev/null
+          }
+          register aarch64     '\x7fELF\x02\x01\x01\x00' '\xb7\x00'
+          register riscv64     '\x7fELF\x02\x01\x01\x00' '\xf3\x00'
+          register loongarch64 '\x7fELF\x02\x01\x01\x00' '\x02\x01'
+          register ppc64le     '\x7fELF\x02\x01\x01\x00' '\x15\x00'
+          register ppc64       '\x7fELF\x02\x02\x01\x00' '\x00\x15'
+
+          grep -q enabled "/proc/sys/fs/binfmt_misc/qemu-${{ matrix.arch }}"
+
+      - name: Install host mkdwarfs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The pinned x86_64 DwarFS binary, verified against the same pin the
+          # crate uses, so the smoke test never builds an image with a tool that
+          # does not match what release builds fetch.
+          url=$(grep -o 'https://github.com/mhx/dwarfs/releases/download/v[0-9.]*/dwarfs-universal-[0-9.]*-Linux-{arch}' src/pinned.rs \
+            | head -1 | sed 's/{arch}/x86_64/')
+          sha=$(awk '/MKDWARFS_CHECKSUMS/,/];/' src/pinned.rs \
+            | grep -A1 '"x86_64"' | grep -o '[0-9a-f]\{64\}' | head -1)
+          test -n "$url" && test -n "$sha"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/mkdwarfs" "$url"
+          echo "$sha  $RUNNER_TEMP/mkdwarfs" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/mkdwarfs"
+          echo "APPIMAGETOOL_SMOKE_MKDWARFS=$RUNNER_TEMP/mkdwarfs" >> "$GITHUB_ENV"
+
+      - name: Build and run the smoke AppImage
+        env:
+          APPIMAGETOOL_SMOKE_ARCH: ${{ matrix.arch }}
+        run: |
+          cargo test --locked --test integration \
+            -- smoke_builds_and_runs_appimage --ignored --exact --nocapture

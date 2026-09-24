@@ -12,7 +12,7 @@
 /// choice. The lite variant embeds DwarFS `dwarfs-fuse-extract`, which holds
 /// only the MIT-licensed reader and extractor. The non-lite variant embeds
 /// `dwarfs-universal`, which also contains the GPL-3.0 `mkdwarfs` writer.
-pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.7.1/uruntime-appimage-dwarfs-lite-{arch}";
+pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.8.1/uruntime-appimage-dwarfs-lite-{arch}";
 
 /// Default mkdwarfs download URL. `{arch}` is replaced with the target
 /// architecture.
@@ -30,27 +30,27 @@ pub const MKDWARFS_URL_TEMPLATE: &str =
 pub const URUNTIME_CHECKSUMS: &[(&str, &str)] = &[
     (
         "aarch64",
-        "bfcb5d2198d675419207345219766182cffa2515754ff813267118277156a07d",
+        "c1641dfe465f4cb70ae545fbfb9de7a221aa6e9a0b1d7ea600b213a1f10738a0",
     ),
     (
         "loongarch64",
-        "331dcc5edec3ea117ea6647ae996d5a92d125a620f45ad3625fe902bd45da893",
+        "7f149441fbb772477c8748e58c1233e4e0e141d6ca2507c4ddad97b69b4008bc",
     ),
     (
         "ppc64",
-        "509649e8211f8ad105c44b2570c9c4df1fa296a48d09bd81db70d59944011647",
+        "db7a7834c1cb657c2708eab206d9a140231962d22f776cd0ea4fd9a482be3037",
     ),
     (
         "ppc64le",
-        "4c806d6b3385a7cc349030201004a4b079caa94ed18561eb033edbe038291f14",
+        "0fa3983c5c18794e841d2ad20938b87c467cbf24034a0fad608c5fe00a1668a9",
     ),
     (
         "riscv64",
-        "19eafe94ce285d546732abd73a37f0d0035ce8421c70eb52e8ac4e355aeefccc",
+        "25d1137942a24fed3d1126686960de5dc5ec44070d5e3a6c3544cca229d230cb",
     ),
     (
         "x86_64",
-        "f19d2a58b5f7cb372b8a88b1e9414fd118d8da6d2c555cf3e7c0bac9373b8af9",
+        "b3c2916153e089d703cee5a7ebc540941d2f1d71baa90eb3092b15eef48345a8",
     ),
 ];
 

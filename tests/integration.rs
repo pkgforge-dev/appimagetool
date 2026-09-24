@@ -408,3 +408,218 @@ fn test_full_build_pipeline() {
     }
     assert!(found, "no .AppImage file found in output directory");
 }
+
+// ─── Smoke test: package a trivial AppDir and run the AppImage ───────
+
+/// A minimal AppDir whose `AppRun` prints `success`.
+fn create_smoke_appdir(dir: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::create_dir_all(dir.join("usr/bin")).unwrap();
+    let apprun = dir.join("AppRun");
+    fs::write(&apprun, "#!/bin/sh\necho success\n").unwrap();
+    fs::set_permissions(&apprun, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let png_header: [u8; 8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    fs::write(dir.join(".DirIcon"), png_header).unwrap();
+
+    fs::write(
+        dir.join("smoke.desktop"),
+        "[Desktop Entry]\n\
+         Type=Application\n\
+         Name=Smoke\n\
+         Exec=smoke\n\
+         Icon=smoke\n\
+         Categories=Utility;\n",
+    )
+    .unwrap();
+}
+
+/// The asset-architecture spelling of the machine running the tests, so it can
+/// be compared against a requested runtime arch.
+fn host_asset_arch() -> String {
+    appimagetool::pinned::target_asset_arch(std::env::consts::ARCH, cfg!(target_endian = "little"))
+}
+
+/// The binfmt_misc handler name QEMU registers for `arch`, if it is one the
+/// suite knows how to emulate.
+fn binfmt_handler(arch: &str) -> Option<String> {
+    match arch {
+        "aarch64" | "riscv64" | "loongarch64" | "ppc64" | "ppc64le" => Some(format!("qemu-{arch}")),
+        _ => None,
+    }
+}
+
+/// Whether the kernel can execute `arch` binaries through a registered QEMU
+/// handler. Native execution needs no handler.
+fn binfmt_enabled(arch: &str) -> bool {
+    let Some(handler) = binfmt_handler(arch) else {
+        return false;
+    };
+    fs::read_to_string(format!("/proc/sys/fs/binfmt_misc/{handler}"))
+        .is_ok_and(|entry| entry.contains("enabled"))
+}
+
+/// `ENOEXEC` — what exec returns when no binfmt handler matched the file.
+const ENOEXEC: i32 = 8;
+
+/// The ELF `EI_DATA` byte an architecture's binaries must carry.
+///
+/// `ppc64` is big-endian; `ppc64le` and every other architecture we ship are
+/// little-endian.
+fn expected_elf_data(arch: &str) -> Option<u8> {
+    match arch {
+        "ppc64" => Some(2),
+        "x86_64" | "aarch64" | "riscv64" | "loongarch64" | "ppc64le" => Some(1),
+        _ => None,
+    }
+}
+
+/// The ELF `e_machine` value an architecture's binaries must carry.
+///
+/// `ppc64` and `ppc64le` deliberately share `EM_PPC64`; only [`expected_elf_data`]
+/// separates them.
+fn expected_emachine(arch: &str) -> Option<u16> {
+    match arch {
+        "x86_64" => Some(0x3e),
+        "aarch64" => Some(0xb7),
+        "riscv64" => Some(0xf3),
+        "loongarch64" => Some(0x0102),
+        "ppc64" | "ppc64le" => Some(0x15),
+        _ => None,
+    }
+}
+
+/// Read `e_machine` from an ELF header, honouring the header's own endianness.
+fn elf_emachine(header: &[u8]) -> Option<u16> {
+    let bytes: [u8; 2] = header.get(18..20)?.try_into().ok()?;
+    match header.get(5)? {
+        1 => Some(u16::from_le_bytes(bytes)),
+        2 => Some(u16::from_be_bytes(bytes)),
+        _ => None,
+    }
+}
+
+/// The first 20 bytes of `path` — enough for the ELF identity fields.
+fn elf_header(path: &std::path::Path) -> [u8; 20] {
+    use std::io::Read;
+
+    let mut header = [0u8; 20];
+    fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut header))
+        .unwrap_or_else(|err| panic!("failed to read the ELF header of {}: {err}", path.display()));
+    header
+}
+
+/// Package a minimal AppDir and execute the resulting AppImage, asserting that
+/// its `AppRun` ran and that the embedded runtime matches the requested
+/// architecture. This is the only test that exercises a finished AppImage the
+/// way a user does, so it catches runtime/packaging regressions the other tests
+/// cannot see.
+///
+/// Needs `mkdwarfs` for the host and network access to fetch the pinned
+/// uruntime, so it is ignored by default; CI runs it per architecture with
+/// `--ignored`. `APPIMAGETOOL_SMOKE_ARCH` selects the runtime architecture
+/// (default: the host) and `APPIMAGETOOL_SMOKE_MKDWARFS` overrides the host
+/// `mkdwarfs` path. Foreign architectures additionally need a binfmt_misc
+/// handler that matches AppImages; see `.github/workflows/ci.yml` for why the
+/// ones `qemu-user-static` ships do not.
+#[test]
+#[ignore = "packages and runs an AppImage; needs mkdwarfs, network, and QEMU for foreign arches"]
+fn smoke_builds_and_runs_appimage() {
+    let arch = std::env::var("APPIMAGETOOL_SMOKE_ARCH").unwrap_or_else(|_| host_asset_arch());
+    let host = host_asset_arch();
+
+    if arch != host && !binfmt_enabled(&arch) {
+        panic!(
+            "cannot run the {arch} AppImage on this {host} host: binfmt_misc has no enabled `{}` \
+             handler. Install qemu-user-static for the interpreters, then register a handler whose \
+             magic masks the EI_PAD bytes: an AppImage writes its \"AI\\x02\" magic there, so the \
+             stock qemu-user-static entries never match it. See .github/workflows/ci.yml.",
+            binfmt_handler(&arch).unwrap_or_else(|| format!("qemu-{arch}"))
+        );
+    }
+
+    let tmp = TempDir::new("appimagetool-smoke");
+    let appdir = tmp.path().join("AppDir");
+    let output_dir = tmp.path().join("output");
+    let build_tmp = tmp.path().join("build");
+    let run_tmp = tmp.path().join("run");
+    for dir in [&appdir, &output_dir, &build_tmp, &run_tmp] {
+        fs::create_dir_all(dir).unwrap();
+    }
+
+    create_smoke_appdir(&appdir);
+
+    let mut args = CliArgs {
+        appdir: Some(appdir),
+        output: Some(output_dir.clone()),
+        appimage_arch: Some(arch.clone()),
+        arch: Some(arch.clone()),
+        dwarfs_comp: Some("zstd:level=1".to_string()), // fast compression for a smoke test
+        tmpdir: Some(build_tmp),
+        ..Default::default()
+    };
+    if let Some(mkdwarfs) = std::env::var_os("APPIMAGETOOL_SMOKE_MKDWARFS") {
+        args.mkdwarfs = Some(PathBuf::from(mkdwarfs));
+    }
+    let config = Config::from_cli_args(args).unwrap();
+
+    appimagetool::appimage::build(&config).unwrap();
+
+    let appimage = fs::read_dir(&output_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| path.extension().and_then(|ext| ext.to_str()) == Some("AppImage"))
+        .expect("build produced no .AppImage");
+
+    // The runtime we asked for has to be the one that landed in the AppImage.
+    // An arch mix-up still runs natively on the host that built it and prints
+    // `success`, so without this the test cannot tell x86_64 from aarch64 — the
+    // shape of commit `1ed1dae`, where ppc64le was handed a big-endian ppc64
+    // runtime. `ppc64` and `ppc64le` share `EM_PPC64`, so the endianness byte is
+    // part of the assertion.
+    let header = elf_header(&appimage);
+    assert_eq!(&header[..4], b"\x7fELF", "{arch}: AppImage is not an ELF");
+    assert_eq!(
+        header[5],
+        expected_elf_data(&arch).expect("known ELF endianness"),
+        "{arch}: AppImage has the wrong EI_DATA byte"
+    );
+    assert_eq!(
+        elf_emachine(&header),
+        expected_emachine(&arch),
+        "{arch}: AppImage carries the wrong e_machine"
+    );
+
+    // Mounting through FUSE is unavailable on CI runners and under QEMU's user
+    // emulation, so drive the runtime's extraction path instead. The AppImage
+    // is still executed end to end.
+    let output = std::process::Command::new(&appimage)
+        .env("TMPDIR", &run_tmp)
+        .env("APPIMAGE_EXTRACT_AND_RUN", "1")
+        .output()
+        .unwrap_or_else(|err| {
+            let hint = if arch != host && err.raw_os_error() == Some(ENOEXEC) {
+                "\n  note: a binfmt_misc handler matched but produced no interpreter. The stock \
+                 qemu-user-static magic requires the ELF padding bytes to be zero, and an AppImage \
+                 writes \"AI\\x02\" there, so a handler that masks those bytes is needed."
+            } else {
+                ""
+            };
+            panic!("failed to execute {}: {err}{hint}", appimage.display());
+        });
+
+    assert!(
+        output.status.success(),
+        "{arch} AppImage exited with {}\n--- stdout ---\n{}\n--- stderr ---\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("success"),
+        "{arch} AppImage did not print `success`\n--- stdout ---\n{}",
+        String::from_utf8_lossy(&output.stdout),
+    );
+}
