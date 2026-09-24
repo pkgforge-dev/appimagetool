@@ -460,6 +460,9 @@ fn binfmt_enabled(arch: &str) -> bool {
         .is_ok_and(|entry| entry.contains("enabled"))
 }
 
+/// `ENOEXEC` — what exec returns when no binfmt handler matched the file.
+const ENOEXEC: i32 = 8;
+
 /// Package a minimal AppDir and execute the resulting AppImage, asserting its
 /// `AppRun` ran. This is the only test that exercises a finished AppImage the
 /// way a user does, so it catches runtime/packaging regressions the other
@@ -480,8 +483,9 @@ fn smoke_builds_and_runs_appimage() {
     if arch != host && !binfmt_enabled(&arch) {
         panic!(
             "cannot run the {arch} AppImage on this {host} host: binfmt_misc has no enabled `{}` \
-             handler. Install qemu-user-static, which registers the QEMU interpreters with the \
-             `F` flag needed to execute the runtime's embedded helpers.",
+             handler. Install qemu-user-static for the interpreters, then register a handler whose \
+             magic masks the EI_PAD bytes: an AppImage writes its \"AI\\x02\" magic there, so the \
+             stock qemu-user-static entries never match it. See .github/workflows/ci.yml.",
             binfmt_handler(&arch).unwrap_or_else(|| format!("qemu-{arch}"))
         );
     }
@@ -526,7 +530,16 @@ fn smoke_builds_and_runs_appimage() {
         .env("TMPDIR", &run_tmp)
         .env("APPIMAGE_EXTRACT_AND_RUN", "1")
         .output()
-        .unwrap_or_else(|err| panic!("failed to execute {}: {err}", appimage.display()));
+        .unwrap_or_else(|err| {
+            let hint = if arch != host && err.raw_os_error() == Some(ENOEXEC) {
+                "\n  note: a binfmt_misc handler matched but produced no interpreter. The stock \
+                 qemu-user-static magic requires the ELF padding bytes to be zero, and an AppImage \
+                 writes \"AI\\x02\" there, so a handler that masks those bytes is needed."
+            } else {
+                ""
+            };
+            panic!("failed to execute {}: {err}{hint}", appimage.display());
+        });
 
     assert!(
         output.status.success(),
