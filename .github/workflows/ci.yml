@@ -15,6 +15,24 @@ permissions:
   contents: read
 
 jobs:
+  tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          toolchain: stable
+
+      # The smoke matrix only runs the `--ignored` test, so without this the
+      # arch-resolution and pin tests — the suite's only other coverage — would
+      # never run in CI.
+      - name: Run the test suite
+        run: cargo test --locked
+
   smoke:
     name: Smoke ${{ matrix.arch }}
     runs-on: ubuntu-latest

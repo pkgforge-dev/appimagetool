@@ -463,17 +463,67 @@ fn binfmt_enabled(arch: &str) -> bool {
 /// `ENOEXEC` — what exec returns when no binfmt handler matched the file.
 const ENOEXEC: i32 = 8;
 
-/// Package a minimal AppDir and execute the resulting AppImage, asserting its
-/// `AppRun` ran. This is the only test that exercises a finished AppImage the
-/// way a user does, so it catches runtime/packaging regressions the other
-/// tests cannot see.
+/// The ELF `EI_DATA` byte an architecture's binaries must carry.
+///
+/// `ppc64` is big-endian; `ppc64le` and every other architecture we ship are
+/// little-endian.
+fn expected_elf_data(arch: &str) -> Option<u8> {
+    match arch {
+        "ppc64" => Some(2),
+        "x86_64" | "aarch64" | "riscv64" | "loongarch64" | "ppc64le" => Some(1),
+        _ => None,
+    }
+}
+
+/// The ELF `e_machine` value an architecture's binaries must carry.
+///
+/// `ppc64` and `ppc64le` deliberately share `EM_PPC64`; only [`expected_elf_data`]
+/// separates them.
+fn expected_emachine(arch: &str) -> Option<u16> {
+    match arch {
+        "x86_64" => Some(0x3e),
+        "aarch64" => Some(0xb7),
+        "riscv64" => Some(0xf3),
+        "loongarch64" => Some(0x0102),
+        "ppc64" | "ppc64le" => Some(0x15),
+        _ => None,
+    }
+}
+
+/// Read `e_machine` from an ELF header, honouring the header's own endianness.
+fn elf_emachine(header: &[u8]) -> Option<u16> {
+    let bytes: [u8; 2] = header.get(18..20)?.try_into().ok()?;
+    match header.get(5)? {
+        1 => Some(u16::from_le_bytes(bytes)),
+        2 => Some(u16::from_be_bytes(bytes)),
+        _ => None,
+    }
+}
+
+/// The first 20 bytes of `path` — enough for the ELF identity fields.
+fn elf_header(path: &std::path::Path) -> [u8; 20] {
+    use std::io::Read;
+
+    let mut header = [0u8; 20];
+    fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut header))
+        .unwrap_or_else(|err| panic!("failed to read the ELF header of {}: {err}", path.display()));
+    header
+}
+
+/// Package a minimal AppDir and execute the resulting AppImage, asserting that
+/// its `AppRun` ran and that the embedded runtime matches the requested
+/// architecture. This is the only test that exercises a finished AppImage the
+/// way a user does, so it catches runtime/packaging regressions the other tests
+/// cannot see.
 ///
 /// Needs `mkdwarfs` for the host and network access to fetch the pinned
 /// uruntime, so it is ignored by default; CI runs it per architecture with
 /// `--ignored`. `APPIMAGETOOL_SMOKE_ARCH` selects the runtime architecture
 /// (default: the host) and `APPIMAGETOOL_SMOKE_MKDWARFS` overrides the host
-/// `mkdwarfs` path. Foreign architectures need QEMU user emulation registered
-/// with binfmt_misc, which is what the `qemu-user-static` package sets up.
+/// `mkdwarfs` path. Foreign architectures additionally need a binfmt_misc
+/// handler that matches AppImages; see `.github/workflows/ci.yml` for why the
+/// ones `qemu-user-static` ships do not.
 #[test]
 #[ignore = "packages and runs an AppImage; needs mkdwarfs, network, and QEMU for foreign arches"]
 fn smoke_builds_and_runs_appimage() {
@@ -522,6 +572,25 @@ fn smoke_builds_and_runs_appimage() {
         .map(|entry| entry.unwrap().path())
         .find(|path| path.extension().and_then(|ext| ext.to_str()) == Some("AppImage"))
         .expect("build produced no .AppImage");
+
+    // The runtime we asked for has to be the one that landed in the AppImage.
+    // An arch mix-up still runs natively on the host that built it and prints
+    // `success`, so without this the test cannot tell x86_64 from aarch64 — the
+    // shape of commit `1ed1dae`, where ppc64le was handed a big-endian ppc64
+    // runtime. `ppc64` and `ppc64le` share `EM_PPC64`, so the endianness byte is
+    // part of the assertion.
+    let header = elf_header(&appimage);
+    assert_eq!(&header[..4], b"\x7fELF", "{arch}: AppImage is not an ELF");
+    assert_eq!(
+        header[5],
+        expected_elf_data(&arch).expect("known ELF endianness"),
+        "{arch}: AppImage has the wrong EI_DATA byte"
+    );
+    assert_eq!(
+        elf_emachine(&header),
+        expected_emachine(&arch),
+        "{arch}: AppImage carries the wrong e_machine"
+    );
 
     // Mounting through FUSE is unavailable on CI runners and under QEMU's user
     // emulation, so drive the runtime's extraction path instead. The AppImage
