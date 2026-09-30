@@ -43,6 +43,10 @@ struct Cli {
     #[arg(long, env = "DWARFS_COMP")]
     dwarfs_comp: Option<String>,
 
+    /// Pin every timestamp in the image to this unix timestamp (reproducible builds)
+    #[arg(long, env = "SOURCE_DATE_EPOCH")]
+    source_date_epoch: Option<String>,
+
     /// Enable DWARFS profile optimization
     #[arg(long)]
     optimize_launch: bool,
@@ -110,6 +114,7 @@ fn main() {
         runtime_url: cli.runtime_url,
         update_info: cli.update_info,
         dwarfs_comp: cli.dwarfs_comp,
+        source_date_epoch: cli.source_date_epoch,
         optimize_launch: cli.optimize_launch,
         dwarfs_profile: cli.dwarfs_profile,
         mkdwarfs: cli.mkdwarfs,

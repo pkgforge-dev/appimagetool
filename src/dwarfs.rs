@@ -67,12 +67,17 @@ pub fn resolve_mkdwarfs(config: &Config) -> Result<PathBuf> {
 }
 
 /// Build a DWARFS AppImage. The runtime is embedded via `--header`.
+///
+/// `source_date_epoch` comes from [`crate::config::Config`]; when set, every
+/// stored timestamp is pinned to it so packing the same AppDir twice gives the
+/// same image. See "Producing bit-identical images" in mkdwarfs(1).
 pub fn build_appimage(
     mkdwarfs: &Path,
     appdir: &Path,
     runtime: &Path,
     output: &Path,
     compression: &str,
+    source_date_epoch: Option<u64>,
     profile: Option<&Path>,
 ) -> Result<()> {
     crate::log_info!("Building DWARFS AppImage...");
@@ -91,6 +96,10 @@ pub fn build_appimage(
         .arg("--input")
         .arg(appdir);
 
+    if let Some(epoch) = source_date_epoch {
+        cmd.arg("--set-time").arg(epoch.to_string());
+    }
+
     // Add profile optimization if available
     if let Some(profile) = profile
         && profile.exists()
@@ -98,6 +107,14 @@ pub fn build_appimage(
         crate::log_info!("Using DWARFS profile {}...", profile.display());
         cmd.arg("--categorize=hotness")
             .arg(format!("--hotness-list={}", profile.display()));
+    }
+
+    // mkdwarfs only produces bit-identical categorized images when the number
+    // of segmenter workers is fixed; it defaults to the host's CPU count, which
+    // differs between build machines. Pin it whenever reproducibility is asked
+    // for, including when `DWARFS_COMP` smuggles in a `--categorize` of its own.
+    if source_date_epoch.is_some() {
+        cmd.arg("--num-segmenter-workers").arg("1");
     }
 
     // Add compression options. The string can contain multiple space-separated

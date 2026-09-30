@@ -3,6 +3,8 @@
 use std::env;
 use std::path::PathBuf;
 
+use crate::error::{Error, Result};
+
 fn env_opt(name: &str) -> Option<String> {
     env::var(name).ok()
 }
@@ -38,6 +40,9 @@ pub struct Config {
     pub runtime_url: Option<String>,
     /// Compression options passed to `mkdwarfs`.
     pub dwarfs_comp: String,
+    /// Unix timestamp applied to every entry in the image. Makes the build
+    /// reproducible; see [`CliArgs::source_date_epoch`].
+    pub source_date_epoch: Option<u64>,
     /// `upd_info` ELF section payload (zsync URL or similar).
     pub update_info: Option<String>,
     /// Permanent env-var lines to bake into the runtime's `.envs` section.
@@ -90,6 +95,9 @@ pub struct CliArgs {
     pub update_info: Option<String>,
     /// `mkdwarfs` compression option string.
     pub dwarfs_comp: Option<String>,
+    /// Pin every timestamp in the image to this unix timestamp.
+    /// Also `SOURCE_DATE_EPOCH`.
+    pub source_date_epoch: Option<String>,
     /// Enable the DWARFS profiling pass.
     pub optimize_launch: bool,
     /// Path to an existing DWARFS profile to feed into the build.
@@ -174,6 +182,11 @@ impl Config {
             .dwarfs_comp
             .unwrap_or_else(|| "zstd:level=22 -S26 -B6".to_string());
 
+        let source_date_epoch = parse_source_date_epoch(
+            args.source_date_epoch
+                .or_else(|| env_opt("SOURCE_DATE_EPOCH")),
+        )?;
+
         Ok(Config {
             appdir,
             output_dir: args.output.unwrap_or_else(|| PathBuf::from(".")),
@@ -183,6 +196,7 @@ impl Config {
             runtime: args.runtime,
             runtime_url: args.runtime_url,
             dwarfs_comp,
+            source_date_epoch,
             update_info,
             env_vars,
             dwarfs_profile,
@@ -221,6 +235,27 @@ fn dirs_home() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("~"))
 }
 
+/// Parse `SOURCE_DATE_EPOCH` into a unix timestamp.
+///
+/// The spec defines the value as the output of `date +%s`, so only ASCII
+/// digits are accepted — `u64::from_str` would also take a leading `+`.
+/// Failing here rather than in `mkdwarfs` keeps the AppDir untouched when the
+/// value is malformed.
+fn parse_source_date_epoch(value: Option<String>) -> Result<Option<u64>> {
+    let Some(value) = value.filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    if !value.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(Error::Config(format!(
+            "SOURCE_DATE_EPOCH must be a unix timestamp in seconds, got '{value}'"
+        )));
+    }
+    value
+        .parse()
+        .map(Some)
+        .map_err(|_| Error::Config(format!("SOURCE_DATE_EPOCH is out of range: '{value}'")))
+}
+
 /// Strip the epoch prefix from a version string.
 /// Shell equivalent: `${VERSION#*:}` — removes everything up to
 /// and including the first colon.  `"1:2.0.1"` → `"2.0.1"`.
@@ -242,6 +277,30 @@ mod tests {
         assert_eq!(strip_epoch("1:"), "");
         assert_eq!(strip_epoch(""), "");
         assert_eq!(strip_epoch("0:1.0.0-alpha"), "1.0.0-alpha");
+    }
+
+    #[test]
+    fn test_parse_source_date_epoch() {
+        assert_eq!(parse_source_date_epoch(None).unwrap(), None);
+        assert_eq!(parse_source_date_epoch(Some(String::new())).unwrap(), None);
+        assert_eq!(
+            parse_source_date_epoch(Some("1700000000".to_string())).unwrap(),
+            Some(1_700_000_000)
+        );
+    }
+
+    #[test]
+    fn test_parse_source_date_epoch_rejects_anything_else() {
+        // `date +%s` never emits these, and a leading `+` would otherwise be
+        // accepted by `u64::from_str`.
+        for bad in ["now", "-1", "+1700000000", "1.5", "1700000000s", " "] {
+            assert!(
+                parse_source_date_epoch(Some(bad.to_string())).is_err(),
+                "expected {bad:?} to be rejected"
+            );
+        }
+        // More digits than u64 holds is a range error, not a format error.
+        assert!(parse_source_date_epoch(Some("9".repeat(21))).is_err());
     }
 
     fn args_with_appdir() -> CliArgs {
