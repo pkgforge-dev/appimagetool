@@ -1,4 +1,10 @@
 
+## [0.5.3](https://github.com/pkgforge-dev/appimagetool/compare/0.5.2...0.5.3) - 2026-10-09
+
+### ⚡ Performance
+
+- *(dwarfs)* Default to -B2 instead of -B6 ([#38](https://github.com/pkgforge-dev/appimagetool/pull/38)) - ([d95ffde](https://github.com/pkgforge-dev/appimagetool/commit/d95ffded7cff88676fe6a1aa724c46d9e111f3d3))
+
 ## [0.5.2](https://github.com/pkgforge-dev/appimagetool/compare/0.5.1...0.5.2) - 2026-09-24
 
 ## [0.5.1](https://github.com/pkgforge-dev/appimagetool/compare/0.5.0...0.5.1) - 2026-09-13
