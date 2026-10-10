@@ -93,6 +93,14 @@ pub fn build(config: &Config) -> Result<()> {
 
     // DWARFS profile optimization (optional)
     let profile = if config.optimize_launch {
+        if config.source_date_epoch.is_some() {
+            crate::log_warn!(
+                "SOURCE_DATE_EPOCH is set, but OPTIMIZE_LAUNCH records a hotness \
+                 profile by running the AppImage; the recorded profile is not \
+                 reproducible"
+            );
+        }
+
         // Profiling launches the AppImage, which mounts via FUSE. Fail fast in
         // environments (typically minimal containers) where FUSE isn't usable.
         dwarfs::check_fuse_available()?;
@@ -129,6 +137,7 @@ pub fn build(config: &Config) -> Result<()> {
         &runtime_path,
         &output_path,
         &config.dwarfs_comp,
+        config.source_date_epoch,
         profile.as_deref(),
     )?;
 

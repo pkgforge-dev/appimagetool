@@ -409,6 +409,97 @@ fn test_full_build_pipeline() {
     assert!(found, "no .AppImage file found in output directory");
 }
 
+// ─── Reproducible builds (needs mkdwarfs, run with --ignored) ────────
+
+/// Set the mtime of every entry under `dir`.
+fn set_all_mtimes(dir: &std::path::Path, epoch: u64) {
+    use std::time::{Duration, UNIX_EPOCH};
+
+    let modified = UNIX_EPOCH + Duration::from_secs(epoch);
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(path) = stack.pop() {
+        if path.is_dir() {
+            for entry in fs::read_dir(&path).unwrap() {
+                stack.push(entry.unwrap().path());
+            }
+        }
+        // Opening a directory read-only works on Linux, and this suite is
+        // Unix-only anyway.
+        fs::File::open(&path)
+            .and_then(|file| file.set_times(fs::FileTimes::new().set_modified(modified)))
+            .unwrap_or_else(|err| panic!("failed to set the mtime of {}: {err}", path.display()));
+    }
+}
+
+/// Pack `appdir` twice under one `SOURCE_DATE_EPOCH` while changing its own
+/// mtimes in between, then once more under a different epoch: the first two
+/// images must match and the third must not. `header` is only prepended to the
+/// image, so a dummy file is enough — no uruntime download and no FUSE.
+fn assert_reproducible_build(
+    mkdwarfs: &std::path::Path,
+    appdir: &std::path::Path,
+    header: &std::path::Path,
+    out_dir: &std::path::Path,
+) {
+    let pack = |epoch: u64, name: &str| -> Vec<u8> {
+        let out = out_dir.join(name);
+        appimagetool::dwarfs::build_appimage(
+            mkdwarfs,
+            appdir,
+            header,
+            &out,
+            "zstd:level=1",
+            Some(epoch),
+            None,
+        )
+        .unwrap();
+        fs::read(&out).unwrap()
+    };
+
+    let first = pack(1_700_000_000, "first.AppImage");
+
+    // Same contents from an older "build host". Without --set-time this alone
+    // changes the image.
+    set_all_mtimes(appdir, 1_500_000_000);
+
+    let same_epoch = pack(1_700_000_000, "same-epoch.AppImage");
+    let other_epoch = pack(1_600_000_000, "other-epoch.AppImage");
+
+    assert_eq!(
+        first, same_epoch,
+        "the same SOURCE_DATE_EPOCH must ignore the AppDir's own mtimes"
+    );
+    assert_ne!(
+        first, other_epoch,
+        "a different SOURCE_DATE_EPOCH must change the image"
+    );
+}
+
+/// Standalone entry point, so the check can be run with `--ignored` without the
+/// smoke test's runtime download. CI installs mkdwarfs only for the smoke job,
+/// which calls the same helper.
+#[test]
+#[ignore = "needs mkdwarfs; the smoke test carries it in CI"]
+fn reproducible_build_pins_timestamps() {
+    let tmp = TempDir::new("appimagetool-repro");
+    let appdir = tmp.path().join("AppDir");
+    let runtime = tmp.path().join("dummy-runtime");
+    fs::create_dir_all(&appdir).unwrap();
+    create_mock_appdir(&appdir, "Repro");
+    fs::write(&runtime, b"not a real runtime\n").unwrap();
+
+    let config = Config::from_cli_args(CliArgs {
+        appdir: Some(appdir.clone()),
+        tmpdir: Some(tmp.path().to_path_buf()),
+        mkdwarfs: std::env::var_os("APPIMAGETOOL_SMOKE_MKDWARFS").map(PathBuf::from),
+        ..Default::default()
+    })
+    .unwrap();
+    let mkdwarfs = appimagetool::dwarfs::resolve_mkdwarfs(&config).unwrap();
+
+    assert_reproducible_build(&mkdwarfs, &appdir, &runtime, tmp.path());
+}
+
 // ─── Smoke test: package a trivial AppDir and run the AppImage ───────
 
 /// A minimal AppDir whose `AppRun` prints `success`.
@@ -622,4 +713,13 @@ fn smoke_builds_and_runs_appimage() {
         "{arch} AppImage did not print `success`\n--- stdout ---\n{}",
         String::from_utf8_lossy(&output.stdout),
     );
+
+    // The smoke job is the only CI job with mkdwarfs installed, so it also
+    // carries the reproducible-build check.
+    let repro = tmp.path().join("repro");
+    fs::create_dir_all(&repro).unwrap();
+    let header = tmp.path().join("dummy-header");
+    fs::write(&header, b"not a real header\n").unwrap();
+    let mkdwarfs = appimagetool::dwarfs::resolve_mkdwarfs(&config).unwrap();
+    assert_reproducible_build(&mkdwarfs, &config.appdir, &header, &repro);
 }

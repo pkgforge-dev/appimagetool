@@ -80,6 +80,7 @@ Options:
       --runtime-url <URL>          URL to download uruntime from [env: URUNTIME_LINK]
   -u, --update-info <UPINFO>       Update information string [env: UPINFO]
       --dwarfs-comp <COMP>         DWARFS compression options [env: DWARFS_COMP]
+      --source-date-epoch <EPOCH>  Pin every timestamp in the image [env: SOURCE_DATE_EPOCH]
       --optimize-launch            Enable DWARFS profile optimization (also via OPTIMIZE_LAUNCH=1)
       --profile-timeout <SECS>     Profiling timeout in seconds [env: OPTIMIZE_LAUNCH_TIMEOUT] [default: 10]
       --keep-mount                 Keep the FUSE mount alive after exit (also via URUNTIME_PRELOAD=1)
@@ -110,6 +111,22 @@ Every CLI option has a matching env var (shown above). A few extra knobs that ar
 | `OPTIMIZE_LAUNCH`    | Set to `1` to enable the DWARFS profiling pass (same as `--optimize-launch`).           |
 | `OPTIMIZE_LAUNCH_TIMEOUT` | Profiling timeout in seconds (default `10`).                                       |
 | `SKIP_INTEGRITY_CHECKS` | Set to `1` to skip the pinned uruntime SHA-256 verification.                         |
+
+### Reproducible builds
+
+Set `SOURCE_DATE_EPOCH` (or `--source-date-epoch`) to a unix timestamp to pin
+the timestamps of every entry in the image. Without it the image inherits
+whatever timestamps the build host produced, plus the `.env` and desktop entry
+that appimagetool rewrites moments before packing, so two builds of the same
+AppDir differ. With `--order=path`, `--no-history`, `--no-create-timestamp`,
+pinned owner/group and a pinned segmenter-worker count — all passed already —
+this makes the DWARFS image bit-identical for a given AppDir, pinned
+`mkdwarfs`/uruntime and compression settings.
+
+`OPTIMIZE_LAUNCH` does not combine with reproducibility: the profile pass
+records which files the AppImage touches while running, which varies from run
+to run. Supply a fixed `DWARFSPROF` instead if you want the categorization
+without the profiling pass.
 
 ### AppDir requirements
 
