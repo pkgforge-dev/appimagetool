@@ -1,4 +1,10 @@
 
+## [0.5.4](https://github.com/pkgforge-dev/appimagetool/compare/0.5.3...0.5.4) - 2026-10-21
+
+### ⚙️ Miscellaneous Tasks
+
+- Release with the Actions token instead of secrets - ([bcc5aa1](https://github.com/pkgforge-dev/appimagetool/commit/bcc5aa151f91e7c532870872f801aaa6e32d0f13))
+
 ## [0.5.3](https://github.com/pkgforge-dev/appimagetool/compare/0.5.2...0.5.3) - 2026-10-09
 
 ### ⚡ Performance
