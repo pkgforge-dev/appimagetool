@@ -111,6 +111,10 @@ Every CLI option has a matching env var (shown above). A few extra knobs that ar
 | `OPTIMIZE_LAUNCH_TIMEOUT` | Profiling timeout in seconds (default `10`).                                       |
 | `SKIP_INTEGRITY_CHECKS` | Set to `1` to skip the pinned uruntime SHA-256 verification.                         |
 
+### DWARFS compression
+
+Without `--dwarfs-comp` / `DWARFS_COMP`, the default is `zstd:level=22 -B2` plus a block size chosen from the AppDir: `-S25` (32 MiB blocks) when the AppDir holds less than 128 MiB of file data, `-S26` (64 MiB blocks) otherwise or when the size cannot be read. `mkdwarfs` compresses blocks in parallel, so smaller blocks let a small AppDir use more than one thread, at a small cost in image size. An explicit `--dwarfs-comp` is passed to `mkdwarfs` unchanged.
+
 ### AppDir requirements
 
 The AppDir must contain:

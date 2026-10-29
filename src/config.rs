@@ -172,7 +172,7 @@ impl Config {
 
         let dwarfs_comp = args
             .dwarfs_comp
-            .unwrap_or_else(|| "zstd:level=22 -S26 -B2".to_string());
+            .unwrap_or_else(|| crate::dwarfs::default_compression(&appdir));
 
         Ok(Config {
             appdir,

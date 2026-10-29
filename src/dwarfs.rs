@@ -12,6 +12,54 @@ use crate::error::{Error, Result};
 use crate::pinned;
 use crate::util;
 
+/// Compression options used when the user passes none. The block size flag is
+/// appended by [`default_compression`].
+const DEFAULT_COMPRESSION: &str = "zstd:level=22";
+const DEFAULT_BLOCK_OPTS: &str = "-B2";
+
+/// AppDirs smaller than this use [`SMALL_BLOCK_BITS`].
+const SMALL_APPDIR_LIMIT: u64 = 128 * 1024 * 1024;
+/// `-S25`: 32 MiB blocks. mkdwarfs compresses blocks in parallel, so a smaller
+/// block lets several worker threads share one small AppDir.
+const SMALL_BLOCK_BITS: u32 = 25;
+/// `-S26`: 64 MiB blocks. Best ratio, used for AppDirs of
+/// [`SMALL_APPDIR_LIMIT`] and larger and whenever the size is unknown.
+const LARGE_BLOCK_BITS: u32 = 26;
+
+/// Build the default `mkdwarfs` compression option string for an AppDir.
+///
+/// Uses `-S25` when the AppDir holds less than 128 MiB of file data, and `-S26`
+/// otherwise. If the size cannot be read, `-S26` is used, which is the value
+/// this tool defaulted to before the size was considered.
+pub fn default_compression(appdir: &Path) -> String {
+    let bits = match appdir_size(appdir) {
+        Some(size) if size < SMALL_APPDIR_LIMIT => SMALL_BLOCK_BITS,
+        _ => LARGE_BLOCK_BITS,
+    };
+    format!("{DEFAULT_COMPRESSION} -S{bits} {DEFAULT_BLOCK_OPTS}")
+}
+
+/// Total size in bytes of the regular files under `dir`, without following
+/// symlinks. Returns `None` if the directory or any entry cannot be read.
+/// Hard links are counted once per path, so the result can only overstate the
+/// size mkdwarfs sees (it deduplicates), never understate it.
+fn appdir_size(dir: &Path) -> Option<u64> {
+    let mut total: u64 = 0;
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(current) = pending.pop() {
+        for entry in std::fs::read_dir(&current).ok()? {
+            let entry = entry.ok()?;
+            let file_type = entry.file_type().ok()?;
+            if file_type.is_dir() {
+                pending.push(entry.path());
+            } else if file_type.is_file() {
+                total = total.saturating_add(entry.metadata().ok()?.len());
+            }
+        }
+    }
+    Some(total)
+}
+
 /// Resolve the mkdwarfs binary path. Checks the user-provided path, then
 /// `$PATH`, then a blob embedded by the `embed-mkdwarfs` feature, then downloads
 /// to tmpdir.
