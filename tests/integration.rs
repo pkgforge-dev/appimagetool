@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use appimagetool::config::{CliArgs, Config};
 use appimagetool::desktop::{self, DesktopEntry};
+use appimagetool::dwarfs;
 
 /// Helper: create a temp dir that is automatically cleaned up.
 struct TempDir(PathBuf);
@@ -194,8 +195,93 @@ fn test_config_defaults() {
     assert!(!config.keep_mount);
     assert!(!config.devel_release);
     assert_eq!(config.profile_timeout, 10);
-    // Default compression
-    assert_eq!(config.dwarfs_comp, "zstd:level=22 -S26 -B2");
+    // No explicit compression: the default is resolved at build time
+    assert_eq!(config.dwarfs_comp, None);
+}
+
+#[test]
+fn test_config_explicit_compression_is_not_adjusted() {
+    let tmp = TempDir::new("appimagetool-test");
+    let appdir = tmp.path().join("AppDir");
+    fs::create_dir_all(&appdir).unwrap();
+
+    let config = Config::from_cli_args(CliArgs {
+        appdir: Some(appdir),
+        tmpdir: Some(tmp.path().to_path_buf()),
+        dwarfs_comp: Some("zstd:level=22 -S26 -B2".to_string()),
+        ..Default::default()
+    })
+    .unwrap();
+
+    assert_eq!(
+        config.dwarfs_comp.as_deref(),
+        Some("zstd:level=22 -S26 -B2")
+    );
+}
+
+// ─── Default block size tests ────────────────────────────────────────
+
+const MIB: u64 = 1024 * 1024;
+
+/// Create `<root>/<rel>` as a sparse file of `len` bytes.
+fn sparse_file(root: &std::path::Path, rel: &str, len: u64) {
+    let path = root.join(rel);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::File::create(path).unwrap().set_len(len).unwrap();
+}
+
+#[test]
+fn test_default_compression_reads_appdir_size() {
+    let cases: [(u64, &str); 4] = [
+        (54 * MIB, "zstd:level=22 -S24 -B2"),
+        (64 * MIB + 1, "zstd:level=22 -S25 -B2"),
+        (128 * MIB, "zstd:level=22 -S25 -B2"),
+        (128 * MIB + 1, "zstd:level=22 -S26 -B2"),
+    ];
+    for (size, expected) in cases {
+        let tmp = TempDir::new("appimagetool-test");
+        sparse_file(tmp.path(), "bin/app", size);
+        assert_eq!(
+            dwarfs::default_compression(tmp.path()),
+            expected,
+            "size {size}"
+        );
+    }
+}
+
+#[test]
+fn test_default_compression_sums_nested_files() {
+    let tmp = TempDir::new("appimagetool-test");
+    sparse_file(tmp.path(), "a/b/c/one", 40 * MIB);
+    sparse_file(tmp.path(), "lib/two", 40 * MIB);
+    assert_eq!(
+        dwarfs::default_compression(tmp.path()),
+        "zstd:level=22 -S25 -B2"
+    );
+}
+
+#[test]
+fn test_default_compression_does_not_follow_symlinks() {
+    let tmp = TempDir::new("appimagetool-test");
+    let outside = TempDir::new("appimagetool-test");
+    sparse_file(outside.path(), "big", 512 * MIB);
+    let appdir = tmp.path().join("AppDir");
+    fs::create_dir_all(&appdir).unwrap();
+    std::os::unix::fs::symlink(outside.path().join("big"), appdir.join("link")).unwrap();
+    std::os::unix::fs::symlink(outside.path(), appdir.join("dirlink")).unwrap();
+    assert_eq!(
+        dwarfs::default_compression(&appdir),
+        "zstd:level=22 -S24 -B2"
+    );
+}
+
+#[test]
+fn test_default_compression_missing_appdir_uses_s26() {
+    let tmp = TempDir::new("appimagetool-test");
+    assert_eq!(
+        dwarfs::default_compression(&tmp.path().join("missing")),
+        "zstd:level=22 -S26 -B2"
+    );
 }
 
 #[test]

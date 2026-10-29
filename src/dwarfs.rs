@@ -12,6 +12,82 @@ use crate::error::{Error, Result};
 use crate::pinned;
 use crate::util;
 
+/// Compression algorithm of the default `mkdwarfs` options. The block size
+/// (`-S`) and [`DEFAULT_BLOCK_OPTS`] are appended by [`default_compression`].
+const DEFAULT_ALGO: &str = "zstd:level=22";
+/// `-B2` keeps the last two blocks in the segmenter's lookback window.
+const DEFAULT_BLOCK_OPTS: &str = "-B2";
+
+/// mkdwarfs compresses blocks in parallel, one block per worker. The default
+/// block size is the smallest one that keeps the block count at or below this
+/// value, so a small AppDir is split into up to four blocks (four vCPUs on the
+/// hosted CI runners) while a large one keeps few, large blocks for the ratio.
+const TARGET_BLOCKS: u64 = 4;
+/// Smallest default block size, `-S24` (16 MiB). Below this, extra blocks cost
+/// ratio and a small AppDir gains nothing.
+const MIN_BLOCK_BITS: u32 = 24;
+/// Largest default block size, `-S26` (64 MiB): the best ratio, and the value
+/// this tool used for every AppDir before the size was considered.
+const MAX_BLOCK_BITS: u32 = 26;
+
+/// Build the default `mkdwarfs` compression option string for an AppDir.
+///
+/// The `-S` value comes from the size of the AppDir at the time of the call,
+/// see [`block_bits_for_size`]. If the size cannot be read, `-S26` is used.
+pub fn default_compression(appdir: &Path) -> String {
+    let size = appdir_size(appdir);
+    let bits = match size {
+        Some(size) => block_bits_for_size(size),
+        None => MAX_BLOCK_BITS,
+    };
+    crate::log_debug!(
+        "AppDir {} holds {} bytes of file data, using -S{bits}",
+        appdir.display(),
+        size.map_or_else(|| "an unknown number of".to_string(), |s| s.to_string())
+    );
+    format!("{DEFAULT_ALGO} -S{bits} {DEFAULT_BLOCK_OPTS}")
+}
+
+/// The `-S` value for `size` bytes of file data: the smallest block size that
+/// gives at most [`TARGET_BLOCKS`] blocks, clamped to `-S24..=-S26`. A size
+/// that is an exact power-of-two multiple of the target (64 MiB, 128 MiB)
+/// takes the smaller block.
+///
+/// Above 64 MiB the block count steps down just past each boundary, for
+/// example from 4 blocks at 64 MiB to 3 at 64.5 MiB, because block sizes are
+/// powers of two and the count is capped.
+fn block_bits_for_size(size: u64) -> u32 {
+    size.div_ceil(TARGET_BLOCKS)
+        .max(1)
+        .next_power_of_two()
+        .trailing_zeros()
+        .clamp(MIN_BLOCK_BITS, MAX_BLOCK_BITS)
+}
+
+/// Total size in bytes of the regular files under `dir`, without following
+/// symlinks. Returns `None` if the directory or any entry cannot be read.
+///
+/// For a finished AppDir this overstates the data mkdwarfs stores (hard links
+/// are counted once per path, and mkdwarfs deduplicates identical content), so
+/// it does not pick a block size larger than the data warrants. Symlinks and
+/// files added after the walk are the only sources of understatement.
+fn appdir_size(dir: &Path) -> Option<u64> {
+    let mut total: u64 = 0;
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(current) = pending.pop() {
+        for entry in std::fs::read_dir(&current).ok()? {
+            let entry = entry.ok()?;
+            let file_type = entry.file_type().ok()?;
+            if file_type.is_dir() {
+                pending.push(entry.path());
+            } else if file_type.is_file() {
+                total = total.saturating_add(entry.metadata().ok()?.len());
+            }
+        }
+    }
+    Some(total)
+}
+
 /// Resolve the mkdwarfs binary path. Checks the user-provided path, then
 /// `$PATH`, then a blob embedded by the `embed-mkdwarfs` feature, then downloads
 /// to tmpdir.
@@ -328,4 +404,48 @@ fn which(name: &str) -> std::result::Result<PathBuf, ()> {
         }
     }
     Err(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MIB: u64 = 1024 * 1024;
+
+    #[test]
+    fn test_block_bits_for_size() {
+        let cases: [(u64, u32); 12] = [
+            (0, 24),
+            (1, 24),
+            (16 * MIB, 24),
+            (54 * MIB, 24),
+            (64 * MIB - 1, 24),
+            (64 * MIB, 24),
+            (64 * MIB + 1, 25),
+            (128 * MIB - 1, 25),
+            (128 * MIB, 25),
+            (128 * MIB + 1, 26),
+            (4 * 1024 * MIB, 26),
+            (u64::MAX, 26),
+        ];
+        for (size, bits) in cases {
+            assert_eq!(block_bits_for_size(size), bits, "size {size}");
+        }
+    }
+
+    #[test]
+    fn test_default_blocks_never_exceed_target() {
+        for size in [
+            1,
+            20 * MIB,
+            48 * MIB,
+            63 * MIB,
+            64 * MIB,
+            100 * MIB,
+            128 * MIB,
+        ] {
+            let block = 1u64 << block_bits_for_size(size);
+            assert!(size.div_ceil(block) <= TARGET_BLOCKS, "size {size}");
+        }
+    }
 }

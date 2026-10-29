@@ -39,7 +39,7 @@ struct Cli {
     #[arg(short, long, env = "UPINFO")]
     update_info: Option<String>,
 
-    /// DWARFS compression options
+    /// DWARFS compression options [default: zstd:level=22 -B2 with -S24..-S26 chosen from the AppDir size]
     #[arg(long, env = "DWARFS_COMP")]
     dwarfs_comp: Option<String>,
 
