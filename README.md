@@ -113,7 +113,22 @@ Every CLI option has a matching env var (shown above). A few extra knobs that ar
 
 ### DWARFS compression
 
-Without `--dwarfs-comp` / `DWARFS_COMP`, the default is `zstd:level=22 -B2` plus a block size chosen from the AppDir: `-S24` (16 MiB blocks) when the AppDir holds less than 64 MiB of file data, `-S25` (32 MiB blocks) below 128 MiB, and `-S26` (64 MiB blocks) otherwise or when the size cannot be read. `mkdwarfs` compresses blocks in parallel, so smaller blocks let a small AppDir use more than one thread, at a small cost in image size. An explicit `--dwarfs-comp` is passed to `mkdwarfs` unchanged.
+Without `--dwarfs-comp` / `DWARFS_COMP`, the default is `zstd:level=22 -B2` plus a block size (`-S`) derived from the AppDir:
+
+- The size is the sum of the regular files under the AppDir, read right before `mkdwarfs` runs.
+- `mkdwarfs` compresses blocks in parallel, one block per worker. The default is the smallest block size that gives at most 4 blocks (the vCPUs of a hosted CI runner), clamped to `-S24` (16 MiB) .. `-S26` (64 MiB).
+- That is `-S24` up to 64 MiB, `-S25` up to 128 MiB, and `-S26` above. If the size cannot be read, `-S26` is used.
+- Machines with more than 4 cores keep idle workers until the AppDir is several hundred MiB. Pass `--dwarfs-comp` to choose differently.
+- Smaller blocks cost image size. On one 54 MiB GUI app `-S24` was 2.1% to 2.3% larger than `-S26`. On a binary-heavy 53 MiB tree it was 4.35% larger. Image size is the price of the faster build.
+- The default therefore changes with the AppDir size, and an AppDir that crosses 64 MiB or 128 MiB between releases is re-blocked, which makes the next zsync update download most of the image.
+
+To keep the previous fixed default:
+
+```sh
+appimagetool --dwarfs-comp 'zstd:level=22 -S26 -B2' ./AppDir
+```
+
+An explicit `--dwarfs-comp` is passed to `mkdwarfs` unchanged.
 
 ### AppDir requirements
 

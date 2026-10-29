@@ -36,8 +36,10 @@ pub struct Config {
     pub runtime: Option<PathBuf>,
     /// Override URL for downloading the uruntime.
     pub runtime_url: Option<String>,
-    /// Compression options passed to `mkdwarfs`.
-    pub dwarfs_comp: String,
+    /// Compression options passed to `mkdwarfs`. `None` means the default,
+    /// which depends on the AppDir size and is resolved by
+    /// [`crate::appimage::build`] right before `mkdwarfs` runs.
+    pub dwarfs_comp: Option<String>,
     /// `upd_info` ELF section payload (zsync URL or similar).
     pub update_info: Option<String>,
     /// Permanent env-var lines to bake into the runtime's `.envs` section.
@@ -170,10 +172,6 @@ impl Config {
             .or_else(|| env_opt("DWARFSPROF").map(PathBuf::from))
             .or_else(|| optimize_launch.then(|| appdir.join(".dwarfsprofile")));
 
-        let dwarfs_comp = args
-            .dwarfs_comp
-            .unwrap_or_else(|| crate::dwarfs::default_compression(&appdir));
-
         Ok(Config {
             appdir,
             output_dir: args.output.unwrap_or_else(|| PathBuf::from(".")),
@@ -182,7 +180,7 @@ impl Config {
             arch,
             runtime: args.runtime,
             runtime_url: args.runtime_url,
-            dwarfs_comp,
+            dwarfs_comp: args.dwarfs_comp,
             update_info,
             env_vars,
             dwarfs_profile,
@@ -258,7 +256,7 @@ mod tests {
             ..args_with_appdir()
         })
         .unwrap();
-        assert_eq!(config.dwarfs_comp, "zstd:level=1");
+        assert_eq!(config.dwarfs_comp.as_deref(), Some("zstd:level=1"));
     }
 
     #[test]

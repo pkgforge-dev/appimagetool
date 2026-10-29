@@ -122,13 +122,20 @@ pub fn build(config: &Config) -> Result<()> {
         config.dwarfs_profile.clone()
     };
 
+    // The AppDir is complete here, so the size-derived default sees what
+    // mkdwarfs will see.
+    let compression = config
+        .dwarfs_comp
+        .clone()
+        .unwrap_or_else(|| dwarfs::default_compression(&config.appdir));
+
     // Build the final AppImage
     dwarfs::build_appimage(
         &mkdwarfs,
         &config.appdir,
         &runtime_path,
         &output_path,
-        &config.dwarfs_comp,
+        &compression,
         profile.as_deref(),
     )?;
 

@@ -195,8 +195,8 @@ fn test_config_defaults() {
     assert!(!config.keep_mount);
     assert!(!config.devel_release);
     assert_eq!(config.profile_timeout, 10);
-    // Default compression for a small (here empty) AppDir
-    assert_eq!(config.dwarfs_comp, "zstd:level=22 -S24 -B2");
+    // No explicit compression: the default is resolved at build time
+    assert_eq!(config.dwarfs_comp, None);
 }
 
 #[test]
@@ -213,10 +213,13 @@ fn test_config_explicit_compression_is_not_adjusted() {
     })
     .unwrap();
 
-    assert_eq!(config.dwarfs_comp, "zstd:level=22 -S26 -B2");
+    assert_eq!(
+        config.dwarfs_comp.as_deref(),
+        Some("zstd:level=22 -S26 -B2")
+    );
 }
 
-// --- Default block size tests ---
+// ─── Default block size tests ────────────────────────────────────────
 
 const MIB: u64 = 1024 * 1024;
 
@@ -228,14 +231,12 @@ fn sparse_file(root: &std::path::Path, rel: &str, len: u64) {
 }
 
 #[test]
-fn test_default_compression_tiers_and_boundaries() {
-    let cases: [(u64, &str); 6] = [
-        (0, "zstd:level=22 -S24 -B2"),
+fn test_default_compression_reads_appdir_size() {
+    let cases: [(u64, &str); 4] = [
         (54 * MIB, "zstd:level=22 -S24 -B2"),
-        (64 * MIB - 1, "zstd:level=22 -S24 -B2"),
-        (64 * MIB, "zstd:level=22 -S25 -B2"),
-        (128 * MIB - 1, "zstd:level=22 -S25 -B2"),
-        (128 * MIB, "zstd:level=22 -S26 -B2"),
+        (64 * MIB + 1, "zstd:level=22 -S25 -B2"),
+        (128 * MIB, "zstd:level=22 -S25 -B2"),
+        (128 * MIB + 1, "zstd:level=22 -S26 -B2"),
     ];
     for (size, expected) in cases {
         let tmp = TempDir::new("appimagetool-test");
@@ -275,7 +276,7 @@ fn test_default_compression_does_not_follow_symlinks() {
 }
 
 #[test]
-fn test_default_compression_unreadable_size_uses_s26() {
+fn test_default_compression_missing_appdir_uses_s26() {
     let tmp = TempDir::new("appimagetool-test");
     assert_eq!(
         dwarfs::default_compression(&tmp.path().join("missing")),
