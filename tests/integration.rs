@@ -103,6 +103,73 @@ fn test_desktop_add_appimage_metadata() {
 }
 
 #[test]
+fn test_desktop_metadata_with_actions() {
+    let actions = "[Desktop Action new-window]\n\
+                   Name=New Window\n\
+                   Name[pl]=Nowe okno\n\
+                   Exec=TestApp --new-window\n\
+                   X-AppImage-Custom=preserved\n\n\
+                   [Desktop Action preferences]\n\
+                   Name=Preferences\n\
+                   Exec=TestApp --preferences\n";
+    let source = format!(
+        "# Desktop entry comment\n\
+         [Desktop Entry]\n\
+         Type=Application\n\
+         Version=1.0\n\
+         Name=TestApp\n\
+         Exec=TestApp\n\
+         Actions=new-window;preferences;\n\n\
+         {actions}"
+    );
+
+    for (line_ending, trailing_newline) in
+        [("\n", true), ("\n", false), ("\r\n", true), ("\r\n", false)]
+    {
+        let tmp = TempDir::new("appimagetool-test");
+        let source = if trailing_newline {
+            source.as_str()
+        } else {
+            source.trim_end_matches('\n')
+        };
+        fs::write(
+            tmp.path().join("TestApp.desktop"),
+            source.replace('\n', line_ending),
+        )
+        .unwrap();
+        let desktop = DesktopEntry::from_appdir(tmp.path()).unwrap();
+
+        desktop
+            .add_appimage_metadata("TestApp", "1.0.0", "x86_64")
+            .unwrap();
+
+        let content = fs::read_to_string(&desktop.path).unwrap();
+        let (main, _) = content.split_once("[Desktop Action new-window]\n").unwrap();
+        for entry in [
+            "X-AppImage-Name=TestApp",
+            "X-AppImage-Version=1.0.0",
+            "X-AppImage-Arch=x86_64",
+        ] {
+            assert!(
+                main.lines().any(|line| line == entry),
+                "missing {entry} in [Desktop Entry]"
+            );
+            assert_eq!(content.matches(entry).count(), 1);
+        }
+        assert!(main.starts_with("# Desktop entry comment\n[Desktop Entry]\n"));
+        assert!(main.lines().any(|line| line == "Version=1.0"));
+        assert!(
+            main.lines()
+                .any(|line| line == "Actions=new-window;preferences;")
+        );
+        assert!(
+            content.ends_with(actions),
+            "desktop actions should be unchanged"
+        );
+    }
+}
+
+#[test]
 fn test_desktop_metadata_idempotent() {
     let tmp = TempDir::new("appimagetool-test");
     let appdir = tmp.path().join("AppDir");
@@ -115,6 +182,23 @@ fn test_desktop_metadata_idempotent() {
     desktop
         .add_appimage_metadata("TestApp", "1.0.0", "x86_64")
         .unwrap();
+
+    // Also repair metadata misplaced in a desktop action by older versions.
+    let content = fs::read_to_string(&desktop.path).unwrap();
+    fs::write(
+        &desktop.path,
+        format!(
+            "{content}\n\
+             [Desktop Action new-window]\n\
+             Name=New Window\n\
+             Exec=TestApp --new-window\n\
+             X-AppImage-Name=OldApp\n\
+             X-AppImage-Version=UNKNOWN\n\
+             X-AppImage-Arch=aarch64\n"
+        ),
+    )
+    .unwrap();
+
     desktop
         .add_appimage_metadata("TestApp", "2.0.0", "x86_64")
         .unwrap();
@@ -131,6 +215,36 @@ fn test_desktop_metadata_idempotent() {
         content.contains("X-AppImage-Version=2.0.0"),
         "should contain the latest version"
     );
+    assert_eq!(content.matches("X-AppImage-Name=").count(), 1);
+    assert_eq!(content.matches("X-AppImage-Arch=").count(), 1);
+    assert!(!content.contains("X-AppImage-Version=1.0.0"));
+    assert!(!content.contains("UNKNOWN"));
+    assert!(!content.contains("OldApp"));
+    assert!(!content.contains("aarch64"));
+    let (main, action) = content.split_once("[Desktop Action new-window]\n").unwrap();
+    assert!(main.contains("X-AppImage-Version=2.0.0"));
+    assert_eq!(action, "Name=New Window\nExec=TestApp --new-window\n");
+
+    desktop
+        .add_appimage_metadata("TestApp", "2.0.0", "x86_64")
+        .unwrap();
+    assert_eq!(fs::read_to_string(&desktop.path).unwrap(), content);
+}
+
+#[test]
+fn test_desktop_metadata_requires_desktop_entry_group() {
+    let tmp = TempDir::new("appimagetool-test");
+    let source = "[Desktop Action new-window]\nName=New Window\nExec=TestApp --new-window\n";
+    fs::write(tmp.path().join("TestApp.desktop"), source).unwrap();
+    let desktop = DesktopEntry::from_appdir(tmp.path()).unwrap();
+
+    let err = desktop
+        .add_appimage_metadata("TestApp", "1.0.0", "x86_64")
+        .unwrap_err();
+
+    assert!(matches!(err, appimagetool::error::Error::Config(_)));
+    assert!(err.to_string().contains("[Desktop Entry]"));
+    assert_eq!(fs::read_to_string(&desktop.path).unwrap(), source);
 }
 
 #[test]

@@ -52,29 +52,35 @@ impl DesktopEntry {
         })
     }
 
-    /// Add X-AppImage-* entries to the desktop file.
+    /// Add X-AppImage-* entries to the [Desktop Entry] group.
     pub fn add_appimage_metadata(&self, app_name: &str, version: &str, arch: &str) -> Result<()> {
         let content = std::fs::read_to_string(&self.path)?;
 
-        // Remove existing X-AppImage-* lines
-        let filtered: String = content
-            .lines()
-            .filter(|line| {
-                !line.starts_with("X-AppImage-Name=")
-                    && !line.starts_with("X-AppImage-Version=")
-                    && !line.starts_with("X-AppImage-Arch=")
-            })
-            .collect::<Vec<&str>>()
-            .join("\n");
-
-        let mut out = filtered;
-        // Ensure there's a trailing newline before appending
-        if !out.ends_with('\n') {
+        let mut out = String::new();
+        let mut found_desktop_entry = false;
+        // Remove old metadata, including entries misplaced in desktop actions.
+        for line in content.lines().filter(|line| {
+            !line.starts_with("X-AppImage-Name=")
+                && !line.starts_with("X-AppImage-Version=")
+                && !line.starts_with("X-AppImage-Arch=")
+        }) {
+            out.push_str(line);
             out.push('\n');
+
+            // Appending at EOF would put these in the last desktop action.
+            if line == "[Desktop Entry]" {
+                found_desktop_entry = true;
+                out.push_str(&format!("X-AppImage-Name={app_name}\n"));
+                out.push_str(&format!("X-AppImage-Version={version}\n"));
+                out.push_str(&format!("X-AppImage-Arch={arch}\n"));
+            }
         }
-        out.push_str(&format!("X-AppImage-Name={app_name}\n"));
-        out.push_str(&format!("X-AppImage-Version={version}\n"));
-        out.push_str(&format!("X-AppImage-Arch={arch}\n"));
+
+        if !found_desktop_entry {
+            return Err(Error::Config(
+                "desktop file is missing a [Desktop Entry] group".to_string(),
+            ));
+        }
 
         std::fs::write(&self.path, out)?;
         Ok(())
