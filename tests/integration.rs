@@ -196,7 +196,7 @@ fn test_config_defaults() {
     assert!(!config.devel_release);
     assert_eq!(config.profile_timeout, 10);
     // Default compression for a small (here empty) AppDir
-    assert_eq!(config.dwarfs_comp, "zstd:level=22 -S25 -B2");
+    assert_eq!(config.dwarfs_comp, "zstd:level=22 -S24 -B2");
 }
 
 #[test]
@@ -228,40 +228,34 @@ fn sparse_file(root: &std::path::Path, rel: &str, len: u64) {
 }
 
 #[test]
-fn test_default_compression_small_appdir_uses_s25() {
-    let tmp = TempDir::new("appimagetool-test");
-    sparse_file(tmp.path(), "bin/app", 54 * MIB);
-    assert_eq!(
-        dwarfs::default_compression(tmp.path()),
-        "zstd:level=22 -S25 -B2"
-    );
-}
-
-#[test]
-fn test_default_compression_limit_is_exclusive() {
-    let below = TempDir::new("appimagetool-test");
-    sparse_file(below.path(), "app", 128 * MIB - 1);
-    assert_eq!(
-        dwarfs::default_compression(below.path()),
-        "zstd:level=22 -S25 -B2"
-    );
-
-    let at = TempDir::new("appimagetool-test");
-    sparse_file(at.path(), "app", 128 * MIB);
-    assert_eq!(
-        dwarfs::default_compression(at.path()),
-        "zstd:level=22 -S26 -B2"
-    );
+fn test_default_compression_tiers_and_boundaries() {
+    let cases: [(u64, &str); 6] = [
+        (0, "zstd:level=22 -S24 -B2"),
+        (54 * MIB, "zstd:level=22 -S24 -B2"),
+        (64 * MIB - 1, "zstd:level=22 -S24 -B2"),
+        (64 * MIB, "zstd:level=22 -S25 -B2"),
+        (128 * MIB - 1, "zstd:level=22 -S25 -B2"),
+        (128 * MIB, "zstd:level=22 -S26 -B2"),
+    ];
+    for (size, expected) in cases {
+        let tmp = TempDir::new("appimagetool-test");
+        sparse_file(tmp.path(), "bin/app", size);
+        assert_eq!(
+            dwarfs::default_compression(tmp.path()),
+            expected,
+            "size {size}"
+        );
+    }
 }
 
 #[test]
 fn test_default_compression_sums_nested_files() {
     let tmp = TempDir::new("appimagetool-test");
-    sparse_file(tmp.path(), "a/b/c/one", 70 * MIB);
-    sparse_file(tmp.path(), "lib/two", 70 * MIB);
+    sparse_file(tmp.path(), "a/b/c/one", 40 * MIB);
+    sparse_file(tmp.path(), "lib/two", 40 * MIB);
     assert_eq!(
         dwarfs::default_compression(tmp.path()),
-        "zstd:level=22 -S26 -B2"
+        "zstd:level=22 -S25 -B2"
     );
 }
 
@@ -276,7 +270,7 @@ fn test_default_compression_does_not_follow_symlinks() {
     std::os::unix::fs::symlink(outside.path(), appdir.join("dirlink")).unwrap();
     assert_eq!(
         dwarfs::default_compression(&appdir),
-        "zstd:level=22 -S25 -B2"
+        "zstd:level=22 -S24 -B2"
     );
 }
 

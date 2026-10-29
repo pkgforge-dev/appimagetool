@@ -17,26 +17,33 @@ use crate::util;
 const DEFAULT_COMPRESSION: &str = "zstd:level=22";
 const DEFAULT_BLOCK_OPTS: &str = "-B2";
 
-/// AppDirs smaller than this use [`SMALL_BLOCK_BITS`].
-const SMALL_APPDIR_LIMIT: u64 = 128 * 1024 * 1024;
-/// `-S25`: 32 MiB blocks. mkdwarfs compresses blocks in parallel, so a smaller
-/// block lets several worker threads share one small AppDir.
-const SMALL_BLOCK_BITS: u32 = 25;
-/// `-S26`: 64 MiB blocks. Best ratio, used for AppDirs of
-/// [`SMALL_APPDIR_LIMIT`] and larger and whenever the size is unknown.
+/// Block size tiers as `(exclusive AppDir size limit in bytes, -S value)`,
+/// checked in order. mkdwarfs compresses blocks in parallel, so a smaller block
+/// lets several worker threads share a small AppDir. `-S26` (64 MiB blocks)
+/// gives the best ratio and is used for everything above the last limit.
+const BLOCK_TIERS: [(u64, u32); 2] = [(64 * 1024 * 1024, 24), (128 * 1024 * 1024, 25)];
 const LARGE_BLOCK_BITS: u32 = 26;
 
 /// Build the default `mkdwarfs` compression option string for an AppDir.
 ///
-/// Uses `-S25` when the AppDir holds less than 128 MiB of file data, and `-S26`
-/// otherwise. If the size cannot be read, `-S26` is used, which is the value
-/// this tool defaulted to before the size was considered.
+/// Uses `-S24` when the AppDir holds less than 64 MiB of file data, `-S25`
+/// below 128 MiB, and `-S26` otherwise. If the size cannot be read, `-S26` is
+/// used, which is the value this tool defaulted to before the size was
+/// considered.
 pub fn default_compression(appdir: &Path) -> String {
     let bits = match appdir_size(appdir) {
-        Some(size) if size < SMALL_APPDIR_LIMIT => SMALL_BLOCK_BITS,
-        _ => LARGE_BLOCK_BITS,
+        Some(size) => block_bits_for_size(size),
+        None => LARGE_BLOCK_BITS,
     };
     format!("{DEFAULT_COMPRESSION} -S{bits} {DEFAULT_BLOCK_OPTS}")
+}
+
+fn block_bits_for_size(size: u64) -> u32 {
+    BLOCK_TIERS
+        .iter()
+        .find(|(limit, _)| size < *limit)
+        .map(|(_, bits)| *bits)
+        .unwrap_or(LARGE_BLOCK_BITS)
 }
 
 /// Total size in bytes of the regular files under `dir`, without following
