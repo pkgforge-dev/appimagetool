@@ -629,7 +629,7 @@ fn create_smoke_appdir(dir: &std::path::Path) {
 /// The asset-architecture spelling of the machine running the tests, so it can
 /// be compared against a requested runtime arch.
 fn host_asset_arch() -> String {
-    appimagetool::pinned::target_asset_arch(std::env::consts::ARCH, cfg!(target_endian = "little"))
+    appimagetool::config::host_asset_arch()
 }
 
 /// The binfmt_misc handler name QEMU registers for `arch`, if it is one the

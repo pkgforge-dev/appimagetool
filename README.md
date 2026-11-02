@@ -53,8 +53,10 @@ VERSION=1.2.3 appimagetool ./AppDir --output ./dist
 
 The tool tracks two arches separately:
 
-- `APPIMAGE_ARCH` is the *runtime* arch. It picks which `mkdwarfs` and `uruntime` binaries to download, and shows up in `X-AppImage-Arch` metadata. Defaults to the host arch.
+- `APPIMAGE_ARCH` is the *runtime* arch. It picks which `uruntime` binary to download, and shows up in `X-AppImage-Arch` metadata. Defaults to the host arch.
 - `ARCH` is the *display* arch. It only affects the output filename. Falls back to `APPIMAGE_ARCH` when unset.
+
+Neither affects `mkdwarfs`: it is executed on the build host, so it is resolved for the host arch unless overridden by `--mkdwarfs` or `--dwarfs-url`.
 
 This lets a project publish under an alias like `amd64` while still pulling the correct `x86_64` runtime:
 
@@ -74,7 +76,7 @@ Arguments:
 Options:
   -o, --output <OUTPUT>            Output directory [env: OUTPATH] [default: .]
   -n, --name <NAME>                Output filename (auto-detected from .desktop) [env: OUTNAME]
-      --appimage-arch <ARCH>       Runtime arch (download URL + X-AppImage-Arch) [env: APPIMAGE_ARCH]
+      --appimage-arch <ARCH>       Runtime arch (uruntime download URL + X-AppImage-Arch) [env: APPIMAGE_ARCH]
       --arch <ARCH>                Display arch used in the output filename [env: ARCH]
       --runtime <RUNTIME>          Path to uruntime binary [env: RUNTIME]
       --runtime-url <URL>          URL to download uruntime from [env: URUNTIME_LINK]
@@ -176,9 +178,9 @@ features: it is MIT and downloads its helpers on demand. `appimagetool-full-<arc
 is built with both features, so it needs no network at all for helper
 resolution — which makes it GPL-3.0-or-later. See [Licensing](#licensing).
 
-Embedded blobs are architecture specific. A build that embeds a helper for its
-own target still falls back to downloading when asked for a different
-`--appimage-arch`, and an explicit `--runtime` / `--mkdwarfs` path or a custom
+Embedded blobs are architecture specific: the uruntime blob is used only when
+`--appimage-arch` matches the build's target, the `mkdwarfs` blob only when the
+host arch does. An explicit `--runtime` / `--mkdwarfs` path or a custom
 `--runtime-url` / `--dwarfs-url` always wins over an embedded copy.
 
 #### Building offline
