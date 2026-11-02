@@ -52,29 +52,47 @@ impl DesktopEntry {
         })
     }
 
-    /// Add X-AppImage-* entries to the desktop file.
+    /// Append X-AppImage-* entries at the end of the [Desktop Entry] group.
     pub fn add_appimage_metadata(&self, app_name: &str, version: &str, arch: &str) -> Result<()> {
         let content = std::fs::read_to_string(&self.path)?;
 
-        // Remove existing X-AppImage-* lines
-        let filtered: String = content
-            .lines()
-            .filter(|line| {
-                !line.starts_with("X-AppImage-Name=")
-                    && !line.starts_with("X-AppImage-Version=")
-                    && !line.starts_with("X-AppImage-Arch=")
-            })
-            .collect::<Vec<&str>>()
-            .join("\n");
-
-        let mut out = filtered;
-        // Ensure there's a trailing newline before appending
-        if !out.ends_with('\n') {
+        let mut out = String::new();
+        let mut in_desktop_entry = false;
+        let mut desktop_entry_end = None;
+        // Remove old metadata, including entries misplaced in desktop actions.
+        for line in content.lines().filter(|line| {
+            !line.starts_with("X-AppImage-Name=")
+                && !line.starts_with("X-AppImage-Version=")
+                && !line.starts_with("X-AppImage-Arch=")
+        }) {
+            if line.starts_with('[') && line.ends_with(']') {
+                if in_desktop_entry {
+                    desktop_entry_end = Some(out.len());
+                }
+                in_desktop_entry = line == "[Desktop Entry]";
+            }
+            out.push_str(line);
             out.push('\n');
         }
-        out.push_str(&format!("X-AppImage-Name={app_name}\n"));
-        out.push_str(&format!("X-AppImage-Version={version}\n"));
-        out.push_str(&format!("X-AppImage-Arch={arch}\n"));
+
+        if in_desktop_entry {
+            desktop_entry_end = Some(out.len());
+        }
+        let group_end = desktop_entry_end.ok_or_else(|| {
+            Error::Config("desktop file is missing a [Desktop Entry] group".to_string())
+        })?;
+
+        // Keep a blank line before the metadata and before any following group.
+        let entry_end = out[..group_end].trim_end_matches('\n').len();
+        let mut metadata = format!(
+            "\n\nX-AppImage-Name={app_name}\n\
+             X-AppImage-Version={version}\n\
+             X-AppImage-Arch={arch}\n"
+        );
+        if group_end < out.len() {
+            metadata.push('\n');
+        }
+        out.replace_range(entry_end..group_end, &metadata);
 
         std::fs::write(&self.path, out)?;
         Ok(())
