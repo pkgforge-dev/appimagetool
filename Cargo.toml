@@ -23,7 +23,7 @@ libc = "0.2.186"
 sha2 = "0.10.9"
 thiserror = "2.0.18"
 ureq = "3.3.0"
-zsync-rs = "0.2.0"
+zsync-rs = "0.3.0"
 
 [build-dependencies]
 sha2 = "0.10.9"
