@@ -3,9 +3,8 @@
 //!
 //! A default build embeds nothing: every accessor returns `None` and the
 //! download paths in [`crate::uruntime`] and [`crate::dwarfs`] remain the only
-//! source of helpers. Blobs are architecture-specific, so a build that embeds
-//! one for its own target still falls back to downloading when the caller asks
-//! for a different `--appimage-arch`.
+//! source of helpers. Blobs are architecture-specific: `uruntime` is keyed by
+//! `--appimage-arch`, `mkdwarfs` by the host arch.
 
 use std::path::Path;
 

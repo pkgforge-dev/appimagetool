@@ -90,23 +90,6 @@ jobs:
 
           grep -q enabled "/proc/sys/fs/binfmt_misc/qemu-${{ matrix.arch }}"
 
-      - name: Install host mkdwarfs
-        shell: bash
-        run: |
-          set -euo pipefail
-          # The pinned x86_64 DwarFS binary, verified against the same pin the
-          # crate uses, so the smoke test never builds an image with a tool that
-          # does not match what release builds fetch.
-          url=$(grep -o 'https://github.com/mhx/dwarfs/releases/download/v[0-9.]*/dwarfs-universal-[0-9.]*-Linux-{arch}' src/pinned.rs \
-            | head -1 | sed 's/{arch}/x86_64/')
-          sha=$(awk '/MKDWARFS_CHECKSUMS/,/];/' src/pinned.rs \
-            | grep -A1 '"x86_64"' | grep -o '[0-9a-f]\{64\}' | head -1)
-          test -n "$url" && test -n "$sha"
-          curl -fL --retry 3 -o "$RUNNER_TEMP/mkdwarfs" "$url"
-          echo "$sha  $RUNNER_TEMP/mkdwarfs" | sha256sum -c -
-          chmod +x "$RUNNER_TEMP/mkdwarfs"
-          echo "APPIMAGETOOL_SMOKE_MKDWARFS=$RUNNER_TEMP/mkdwarfs" >> "$GITHUB_ENV"
-
       - name: Build and run the smoke AppImage
         env:
           APPIMAGETOOL_SMOKE_ARCH: ${{ matrix.arch }}

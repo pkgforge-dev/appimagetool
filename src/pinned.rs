@@ -14,8 +14,8 @@
 /// `dwarfs-universal`, which also contains the GPL-3.0 `mkdwarfs` writer.
 pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.8.1/uruntime-appimage-dwarfs-lite-{arch}";
 
-/// Default mkdwarfs download URL. `{arch}` is replaced with the target
-/// architecture.
+/// Default mkdwarfs download URL. `{arch}` is the host arch at run time, and
+/// the build target in `build.rs` when embedding the blob.
 ///
 /// `dwarfs-universal` contains the GPL-3.0 `mkdwarfs` writer. Fetching it at
 /// run time leaves upstream as its distributor, which is why this is the

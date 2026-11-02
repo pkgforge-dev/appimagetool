@@ -18,7 +18,7 @@ struct Cli {
     #[arg(short = 'n', long, env = "OUTNAME")]
     name: Option<String>,
 
-    /// Runtime architecture (download URL + X-AppImage-Arch metadata)
+    /// Runtime architecture (uruntime download URL + X-AppImage-Arch metadata)
     #[arg(long, env = "APPIMAGE_ARCH")]
     appimage_arch: Option<String>,
 

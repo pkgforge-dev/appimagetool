@@ -14,6 +14,12 @@ fn env_truthy(name: &str) -> bool {
     )
 }
 
+/// The host arch in the spelling upstream uses for its assets. `mkdwarfs` runs
+/// on the host, so it follows this rather than `--appimage-arch`.
+pub fn host_asset_arch() -> String {
+    crate::pinned::target_asset_arch(env::consts::ARCH, cfg!(target_endian = "little"))
+}
+
 /// Fully resolved build configuration, produced by [`Config::from_cli_args`].
 /// CLI flags, env-var fallbacks, and built-in defaults are all merged here, so
 /// downstream code can treat this struct as authoritative.
@@ -25,8 +31,9 @@ pub struct Config {
     pub output_dir: PathBuf,
     /// Override for the output filename; otherwise derived from desktop entry.
     pub output_name: Option<String>,
-    /// Runtime architecture used for downloading uruntime/mkdwarfs and for
-    /// the `X-AppImage-Arch` metadata. Defaults to the host arch (`uname -m`).
+    /// Runtime architecture used for downloading the uruntime and for the
+    /// `X-AppImage-Arch` metadata. Defaults to the host arch (`uname -m`).
+    /// Does not affect `mkdwarfs`, which runs on the host.
     pub appimage_arch: String,
     /// Display architecture used in the output filename (e.g. `amd64`).
     /// Falls back to [`Self::appimage_arch`] when not explicitly set —
@@ -77,8 +84,8 @@ pub struct CliArgs {
     pub output: Option<PathBuf>,
     /// Override for the output filename.
     pub output_name: Option<String>,
-    /// Runtime architecture (download URL + `X-AppImage-Arch` metadata).
-    /// Defaults to `APPIMAGE_ARCH` env / host arch.
+    /// Runtime architecture (uruntime download URL + `X-AppImage-Arch`
+    /// metadata). Defaults to `APPIMAGE_ARCH` env / host arch.
     pub appimage_arch: Option<String>,
     /// Display architecture used in the output filename.
     /// Defaults to [`Self::appimage_arch`] — set this to publish under an
@@ -121,16 +128,7 @@ impl Config {
         let appimage_arch = args
             .appimage_arch
             .or_else(|| env_opt("APPIMAGE_ARCH"))
-            .unwrap_or_else(|| {
-                // env::consts::ARCH is "powerpc64" for both the powerpc64 and
-                // powerpc64le targets; endianness is only known at compile time
-                // via the target_endian cfg.
-                if env::consts::ARCH == "powerpc64" && cfg!(target_endian = "little") {
-                    "ppc64le".to_string()
-                } else {
-                    env::consts::ARCH.to_string()
-                }
-            });
+            .unwrap_or_else(host_asset_arch);
         // Normalize rust arch spellings to the uname -m equivalent so the
         // download URLs resolve (e.g. powerpc64le -> ppc64le).
         let appimage_arch = crate::pinned::normalize_asset_arch(&appimage_arch);

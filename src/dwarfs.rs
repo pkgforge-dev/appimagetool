@@ -92,10 +92,8 @@ fn appdir_size(dir: &Path) -> Option<u64> {
 /// `$PATH`, then a blob embedded by the `embed-mkdwarfs` feature, then downloads
 /// to tmpdir.
 ///
-/// `mkdwarfs` runs on the build host, so the embedded blob only applies when the
-/// host and requested architectures match. A cross-arch build falls through to
-/// downloading, preserving the existing behaviour of fetching the asset for
-/// `config.appimage_arch`.
+/// `mkdwarfs` runs on the host, so it is resolved for the host arch even when
+/// `--appimage-arch` targets another one.
 pub fn resolve_mkdwarfs(config: &Config) -> Result<PathBuf> {
     // User-provided path
     if let Some(ref path) = config.mkdwarfs {
@@ -114,20 +112,29 @@ pub fn resolve_mkdwarfs(config: &Config) -> Result<PathBuf> {
         return Ok(path);
     }
 
+    let host_arch = crate::config::host_asset_arch();
+    // Must stay named `mkdwarfs`: dwarfs-universal dispatches on its file name.
     let cached = config.tmpdir.join("mkdwarfs");
 
     if config.dwarfs_url.is_none()
-        && let Some(bytes) = embed::mkdwarfs(&config.appimage_arch)
+        && let Some(bytes) = embed::mkdwarfs(&host_arch)
     {
-        crate::log_info!("Using embedded mkdwarfs for {}...", config.appimage_arch);
+        crate::log_info!("Using embedded mkdwarfs for {host_arch}...");
         embed::materialize(bytes, &cached)?;
         return Ok(cached);
     }
 
-    // Checksums are only known for the pinned default URL; user-supplied URLs
-    // are downloaded without verification.
+    let (url, expected_checksum) = mkdwarfs_source(config);
+    util::ensure_cached_binary(&cached, &url, "mkdwarfs", expected_checksum)?;
+    Ok(cached)
+}
+
+/// Download URL and pinned checksum for `mkdwarfs`: the host-arch asset unless
+/// `--dwarfs-url` overrides it, in which case there is no pinned checksum.
+fn mkdwarfs_source(config: &Config) -> (String, Option<&'static str>) {
+    let host_arch = crate::config::host_asset_arch();
     let expected_checksum = if config.dwarfs_url.is_none() {
-        pinned::checksum_for(pinned::MKDWARFS_CHECKSUMS, &config.appimage_arch)
+        pinned::checksum_for(pinned::MKDWARFS_CHECKSUMS, &host_arch)
     } else {
         None
     };
@@ -136,10 +143,9 @@ pub fn resolve_mkdwarfs(config: &Config) -> Result<PathBuf> {
             .dwarfs_url
             .as_deref()
             .unwrap_or(pinned::MKDWARFS_URL_TEMPLATE),
-        &config.appimage_arch,
+        &host_arch,
     );
-    util::ensure_cached_binary(&cached, &url, "mkdwarfs", expected_checksum)?;
-    Ok(cached)
+    (url, expected_checksum)
 }
 
 /// Build a DWARFS AppImage. The runtime is embedded via `--header`.
@@ -447,5 +453,43 @@ mod tests {
             let block = 1u64 << block_bits_for_size(size);
             assert!(size.div_ceil(block) <= TARGET_BLOCKS, "size {size}");
         }
+    }
+
+    #[test]
+    fn mkdwarfs_source_uses_host_arch_not_target_arch() {
+        let mut config = Config::from_cli_args(crate::config::CliArgs {
+            appdir: Some(PathBuf::from("/tmp/AppDir")),
+            appimage_arch: Some("not-the-host-arch".to_string()),
+            ..Default::default()
+        })
+        .unwrap();
+        // `Config` also picks up DWARFS_LINK from the environment.
+        config.dwarfs_url = None;
+
+        let host = crate::config::host_asset_arch();
+        let (url, checksum) = mkdwarfs_source(&config);
+
+        assert_eq!(url, pinned::url_for(pinned::MKDWARFS_URL_TEMPLATE, &host));
+        assert_eq!(
+            checksum,
+            pinned::checksum_for(pinned::MKDWARFS_CHECKSUMS, &host)
+        );
+    }
+
+    #[test]
+    fn mkdwarfs_source_substitutes_host_arch_in_custom_url() {
+        let mut config = Config::from_cli_args(crate::config::CliArgs {
+            appdir: Some(PathBuf::from("/tmp/AppDir")),
+            appimage_arch: Some("not-the-host-arch".to_string()),
+            ..Default::default()
+        })
+        .unwrap();
+        config.dwarfs_url = Some("https://example.invalid/mkdwarfs-{arch}".to_string());
+
+        let host = crate::config::host_asset_arch();
+        let (url, checksum) = mkdwarfs_source(&config);
+
+        assert_eq!(url, format!("https://example.invalid/mkdwarfs-{host}"));
+        assert_eq!(checksum, None);
     }
 }
