@@ -708,15 +708,15 @@ fn elf_header(path: &std::path::Path) -> [u8; 20] {
 /// way a user does, so it catches runtime/packaging regressions the other tests
 /// cannot see.
 ///
-/// Needs `mkdwarfs` for the host and network access to fetch the pinned
-/// uruntime, so it is ignored by default; CI runs it per architecture with
-/// `--ignored`. `APPIMAGETOOL_SMOKE_ARCH` selects the runtime architecture
-/// (default: the host) and `APPIMAGETOOL_SMOKE_MKDWARFS` overrides the host
-/// `mkdwarfs` path. Foreign architectures additionally need a binfmt_misc
-/// handler that matches AppImages; see `.github/workflows/ci.yml` for why the
-/// ones `qemu-user-static` ships do not.
+/// Needs network access to fetch the pinned uruntime and `mkdwarfs`, so it is
+/// ignored by default; CI runs it per architecture with `--ignored`.
+/// `APPIMAGETOOL_SMOKE_ARCH` selects the runtime architecture (default: the
+/// host); `mkdwarfs` is resolved by the tool itself, for the host arch.
+/// Foreign architectures additionally need a binfmt_misc handler that matches
+/// AppImages; see `.github/workflows/ci.yml` for why the ones
+/// `qemu-user-static` ships do not.
 #[test]
-#[ignore = "packages and runs an AppImage; needs mkdwarfs, network, and QEMU for foreign arches"]
+#[ignore = "packages and runs an AppImage; needs network, and QEMU for foreign arches"]
 fn smoke_builds_and_runs_appimage() {
     let arch = std::env::var("APPIMAGETOOL_SMOKE_ARCH").unwrap_or_else(|_| host_asset_arch());
     let host = host_asset_arch();
@@ -742,7 +742,7 @@ fn smoke_builds_and_runs_appimage() {
 
     create_smoke_appdir(&appdir);
 
-    let mut args = CliArgs {
+    let args = CliArgs {
         appdir: Some(appdir),
         output: Some(output_dir.clone()),
         appimage_arch: Some(arch.clone()),
@@ -751,9 +751,6 @@ fn smoke_builds_and_runs_appimage() {
         tmpdir: Some(build_tmp),
         ..Default::default()
     };
-    if let Some(mkdwarfs) = std::env::var_os("APPIMAGETOOL_SMOKE_MKDWARFS") {
-        args.mkdwarfs = Some(PathBuf::from(mkdwarfs));
-    }
     let config = Config::from_cli_args(args).unwrap();
 
     appimagetool::appimage::build(&config).unwrap();
