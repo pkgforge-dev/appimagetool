@@ -1,4 +1,10 @@
 
+## [0.5.6](https://github.com/pkgforge-dev/appimagetool/compare/0.5.5...0.5.6) - 2026-11-02
+
+### 🐛 Bug Fixes
+
+- *(dwarfs)* Resolve mkdwarfs for the host arch, not --appimage-arch ([#46](https://github.com/pkgforge-dev/appimagetool/pull/46)) - ([2604122](https://github.com/pkgforge-dev/appimagetool/commit/260412236c5a1d4f98359f5f77bb1dee2406469b))
+
 ## [0.5.5](https://github.com/pkgforge-dev/appimagetool/compare/0.5.4...0.5.5) - 2026-11-02
 
 ### 🐛 Bug Fixes
