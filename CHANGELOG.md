@@ -1,4 +1,10 @@
 
+## [0.5.5](https://github.com/pkgforge-dev/appimagetool/compare/0.5.4...0.5.5) - 2026-11-02
+
+### 🐛 Bug Fixes
+
+- *(desktop)* Write AppImage metadata in the desktop entry group ([#44](https://github.com/pkgforge-dev/appimagetool/pull/44)) - ([87cc8d6](https://github.com/pkgforge-dev/appimagetool/commit/87cc8d6cf688c4873bc75a8fa6be17f718b2c9a5))
+
 ## [0.5.4](https://github.com/pkgforge-dev/appimagetool/compare/0.5.3...0.5.4) - 2026-10-29
 
 ### ⚡ Performance
