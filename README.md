@@ -1,8 +1,8 @@
-# appimagetool
+# Anylinux-appimagetool
 
-[![GitHub Downloads](https://img.shields.io/github/downloads/pkgforge-dev/appimagetool/total?logo=github&label=GitHub%20Downloads)](https://github.com/pkgforge-dev/appimagetool/releases/latest)
-[![CI Build Status](https://github.com//pkgforge-dev/appimagetool/actions/workflows/release.yml/badge.svg)](https://github.com/pkgforge-dev/appimagetool/releases/latest)
-[![Latest Stable Release](https://img.shields.io/github/v/release/pkgforge-dev/appimagetool)](https://github.com/pkgforge-dev/appimagetool/releases/latest)
+[![GitHub Downloads](https://img.shields.io/github/downloads/pkgforge-dev/Anylinux-appimagetool/total?logo=github&label=GitHub%20Downloads)](https://github.com/pkgforge-dev/Anylinux-appimagetool/releases/latest)
+[![CI Build Status](https://github.com//pkgforge-dev/Anylinux-appimagetool/actions/workflows/release.yml/badge.svg)](https://github.com/pkgforge-dev/Anylinux-appimagetool/releases/latest)
+[![Latest Stable Release](https://img.shields.io/github/v/release/pkgforge-dev/Anylinux-appimagetool)](https://github.com/pkgforge-dev/Anylinux-appimagetool/releases/latest)
 
 A Rust implementation of `appimagetool` for the [Anylinux-AppImages](https://github.com/pkgforge-dev/Anylinux-AppImages) project.
 
@@ -17,7 +17,7 @@ appimagetool ./AppDir
 That's it. The tool will:
 
 1. Validate the AppDir (checks for `AppRun`, `.DirIcon`, one `.desktop` file).
-2. Download `mkdwarfs` and `uruntime` if they're not already cached.
+2. Download pinned `mkdwarfs` and `uruntime` if they're not already cached. (The `-full` variants already ship with them).
 3. Write `X-AppImage-*` metadata into the desktop entry.
 4. Build the DWARFS image with the runtime embedded as the ELF header.
 5. Generate a `.zsync` file when update info is set, plus an `appinfo` sidecar.
