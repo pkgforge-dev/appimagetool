@@ -1,4 +1,6 @@
 
+## [0.5.7](https://github.com/pkgforge-dev/Anylinux-appimagetool/compare/0.5.6...0.5.7) - 2026-11-03
+
 ## [0.5.6](https://github.com/pkgforge-dev/appimagetool/compare/0.5.5...0.5.6) - 2026-11-02
 
 ### 🐛 Bug Fixes
