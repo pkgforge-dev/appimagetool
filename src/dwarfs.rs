@@ -18,17 +18,22 @@ const DEFAULT_ALGO: &str = "zstd:level=22";
 /// `-B2` keeps the last two blocks in the segmenter's lookback window.
 const DEFAULT_BLOCK_OPTS: &str = "-B2";
 
-/// mkdwarfs compresses blocks in parallel, one block per worker. The default
-/// block size is the smallest one that keeps the block count at or below this
-/// value, so a small AppDir is split into up to four blocks (four vCPUs on the
-/// hosted CI runners) while a large one keeps few, large blocks for the ratio.
-const TARGET_BLOCKS: u64 = 4;
-/// Smallest default block size, `-S24` (16 MiB). Below this, extra blocks cost
-/// ratio and a small AppDir gains nothing.
-const MIN_BLOCK_BITS: u32 = 24;
-/// Largest default block size, `-S26` (64 MiB): the best ratio, and the value
-/// this tool used for every AppDir before the size was considered.
-const MAX_BLOCK_BITS: u32 = 26;
+/// AppDirs smaller than this (96 MiB) use 16 MiB blocks, so a small AppDir
+/// still gets several blocks to compress in parallel.
+const SMALL_APPDIR_BYTES: u64 = 96 * 1024 * 1024;
+/// AppDirs larger than this (384 MiB) use 64 MiB blocks; the ones in between
+/// use 32 MiB blocks.
+const LARGE_APPDIR_BYTES: u64 = 384 * 1024 * 1024;
+/// Default block size for AppDirs below [`SMALL_APPDIR_BYTES`], `-S24`
+/// (16 MiB).
+const TINY_BLOCK_BITS: u32 = 24;
+/// Default block size for AppDirs up to [`LARGE_APPDIR_BYTES`], `-S25`
+/// (32 MiB).
+const SMALL_BLOCK_BITS: u32 = 25;
+/// Default block size for larger AppDirs, `-S26` (64 MiB): the best ratio,
+/// and the value this tool used for every AppDir before the size was
+/// considered.
+const LARGE_BLOCK_BITS: u32 = 26;
 
 /// Build the default `mkdwarfs` compression option string for an AppDir.
 ///
@@ -38,7 +43,7 @@ pub fn default_compression(appdir: &Path) -> String {
     let size = appdir_size(appdir);
     let bits = match size {
         Some(size) => block_bits_for_size(size),
-        None => MAX_BLOCK_BITS,
+        None => LARGE_BLOCK_BITS,
     };
     crate::log_debug!(
         "AppDir {} holds {} bytes of file data, using -S{bits}",
@@ -48,20 +53,17 @@ pub fn default_compression(appdir: &Path) -> String {
     format!("{DEFAULT_ALGO} -S{bits} {DEFAULT_BLOCK_OPTS}")
 }
 
-/// The `-S` value for `size` bytes of file data: the smallest block size that
-/// gives at most [`TARGET_BLOCKS`] blocks, clamped to `-S24..=-S26`. A size
-/// that is an exact power-of-two multiple of the target (64 MiB, 128 MiB)
-/// takes the smaller block.
-///
-/// Above 64 MiB the block count steps down just past each boundary, for
-/// example from 4 blocks at 64 MiB to 3 at 64.5 MiB, because block sizes are
-/// powers of two and the count is capped.
+/// The `-S` value for `size` bytes of file data: `-S24` (16 MiB) below
+/// [`SMALL_APPDIR_BYTES`] (96 MiB), `-S25` (32 MiB) up to
+/// [`LARGE_APPDIR_BYTES`] (384 MiB), and `-S26` (64 MiB) above.
 fn block_bits_for_size(size: u64) -> u32 {
-    size.div_ceil(TARGET_BLOCKS)
-        .max(1)
-        .next_power_of_two()
-        .trailing_zeros()
-        .clamp(MIN_BLOCK_BITS, MAX_BLOCK_BITS)
+    if size < SMALL_APPDIR_BYTES {
+        TINY_BLOCK_BITS
+    } else if size > LARGE_APPDIR_BYTES {
+        LARGE_BLOCK_BITS
+    } else {
+        SMALL_BLOCK_BITS
+    }
 }
 
 /// Total size in bytes of the regular files under `dir`, without following
@@ -425,33 +427,17 @@ mod tests {
             (1, 24),
             (16 * MIB, 24),
             (54 * MIB, 24),
-            (64 * MIB - 1, 24),
-            (64 * MIB, 24),
-            (64 * MIB + 1, 25),
-            (128 * MIB - 1, 25),
+            (96 * MIB - 1, 24),
+            (96 * MIB, 25),
             (128 * MIB, 25),
-            (128 * MIB + 1, 26),
+            (384 * MIB - 1, 25),
+            (384 * MIB, 25),
+            (384 * MIB + 1, 26),
             (4 * 1024 * MIB, 26),
             (u64::MAX, 26),
         ];
         for (size, bits) in cases {
             assert_eq!(block_bits_for_size(size), bits, "size {size}");
-        }
-    }
-
-    #[test]
-    fn test_default_blocks_never_exceed_target() {
-        for size in [
-            1,
-            20 * MIB,
-            48 * MIB,
-            63 * MIB,
-            64 * MIB,
-            100 * MIB,
-            128 * MIB,
-        ] {
-            let block = 1u64 << block_bits_for_size(size);
-            assert!(size.div_ceil(block) <= TARGET_BLOCKS, "size {size}");
         }
     }
 

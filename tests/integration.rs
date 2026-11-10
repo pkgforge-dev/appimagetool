@@ -337,11 +337,14 @@ fn sparse_file(root: &std::path::Path, rel: &str, len: u64) {
 
 #[test]
 fn test_default_compression_reads_appdir_size() {
-    let cases: [(u64, &str); 4] = [
+    let cases: [(u64, &str); 7] = [
         (54 * MIB, "zstd:level=22 -S24 -B2"),
-        (64 * MIB + 1, "zstd:level=22 -S25 -B2"),
+        (96 * MIB - 1, "zstd:level=22 -S24 -B2"),
+        (96 * MIB, "zstd:level=22 -S25 -B2"),
         (128 * MIB, "zstd:level=22 -S25 -B2"),
-        (128 * MIB + 1, "zstd:level=22 -S26 -B2"),
+        (384 * MIB, "zstd:level=22 -S25 -B2"),
+        (384 * MIB + 1, "zstd:level=22 -S26 -B2"),
+        (512 * MIB, "zstd:level=22 -S26 -B2"),
     ];
     for (size, expected) in cases {
         let tmp = TempDir::new("appimagetool-test");
@@ -357,8 +360,8 @@ fn test_default_compression_reads_appdir_size() {
 #[test]
 fn test_default_compression_sums_nested_files() {
     let tmp = TempDir::new("appimagetool-test");
-    sparse_file(tmp.path(), "a/b/c/one", 40 * MIB);
-    sparse_file(tmp.path(), "lib/two", 40 * MIB);
+    sparse_file(tmp.path(), "a/b/c/one", 50 * MIB);
+    sparse_file(tmp.path(), "lib/two", 50 * MIB);
     assert_eq!(
         dwarfs::default_compression(tmp.path()),
         "zstd:level=22 -S25 -B2"
