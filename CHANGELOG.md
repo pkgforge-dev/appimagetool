@@ -1,4 +1,22 @@
 
+## [0.6.0](https://github.com/pkgforge-dev/Anylinux-appimagetool/compare/0.5.6...0.6.0) - 2026-11-13
+
+### ⛰️  Features
+
+- *(sidecar)* Add a fixed 128 KiB zstd metadata SquashFS - ([30bd699](https://github.com/pkgforge-dev/Anylinux-appimagetool/commit/30bd69910522e2042cc7021ad60f9f2d07599b81))
+
+### 🐛 Bug Fixes
+
+- *(sidecar)* Pin the 128 KiB-scan runtime release - ([18b19c5](https://github.com/pkgforge-dev/Anylinux-appimagetool/commit/18b19c5b2cd2c1b48902613466d7df3c9b71f776))
+
+### 📚 Documentation
+
+- *(sidecar)* Mention the stub AppRun - ([5cc744d](https://github.com/pkgforge-dev/Anylinux-appimagetool/commit/5cc744d27174fcedbf571e464295459218027fa0))
+
+### ⚡ Performance
+
+- *(dwarfs)* Use 16/32/64 MiB blocks by AppDir size tier - ([6dadeb2](https://github.com/pkgforge-dev/Anylinux-appimagetool/commit/6dadeb282442d0b509150f4b64118bdf5fa46e9d))
+
 ## [0.5.6](https://github.com/pkgforge-dev/appimagetool/compare/0.5.5...0.5.6) - 2026-11-02
 
 ### 🐛 Bug Fixes
