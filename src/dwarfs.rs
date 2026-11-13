@@ -150,11 +150,12 @@ fn mkdwarfs_source(config: &Config) -> (String, Option<&'static str>) {
     (url, expected_checksum)
 }
 
-/// Build a DWARFS AppImage. The runtime is embedded via `--header`.
+/// Build a DWARFS AppImage. `header` is prepended via `--header`; it is the
+/// configured runtime followed by the metadata SquashFS sidecar.
 pub fn build_appimage(
     mkdwarfs: &Path,
     appdir: &Path,
-    runtime: &Path,
+    header: &Path,
     output: &Path,
     compression: &str,
     profile: Option<&Path>,
@@ -171,7 +172,7 @@ pub fn build_appimage(
         .arg("--no-history")
         .arg("--no-create-timestamp")
         .arg("--header")
-        .arg(runtime)
+        .arg(header)
         .arg("--input")
         .arg(appdir);
 

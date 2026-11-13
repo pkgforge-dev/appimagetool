@@ -14,6 +14,8 @@ pub mod elf;
 pub mod embed;
 pub mod error;
 pub mod log;
+/// Builds the metadata SquashFS sidecar placed before the DwarFS payload.
+pub mod metadata;
 /// Pinned upstream artifact URLs and SHA-256 digests, shared with `build.rs`.
 pub mod pinned;
 pub mod uruntime;

@@ -11,6 +11,7 @@ use crate::config::Config;
 use crate::desktop::{self, DesktopEntry};
 use crate::dwarfs;
 use crate::error::Result;
+use crate::metadata;
 use crate::uruntime;
 use crate::util;
 
@@ -129,15 +130,23 @@ pub fn build(config: &Config) -> Result<()> {
         .clone()
         .unwrap_or_else(|| dwarfs::default_compression(&config.appdir));
 
-    // Build the final AppImage
-    dwarfs::build_appimage(
+    // Build the final AppImage. The header is the configured runtime followed
+    // by a small metadata SquashFS so SquashFS-only thumbnailers and desktop
+    // integration tools can read .DirIcon and the desktop entry.
+    crate::log_info!("Building metadata SquashFS sidecar...");
+    let sidecar = metadata::build(&config.appdir, &desktop.path)?;
+    let header_path = metadata::header_path(&config.tmpdir);
+    metadata::write_header(&header_path, &runtime_path, &sidecar)?;
+    let build_result = dwarfs::build_appimage(
         &mkdwarfs,
         &config.appdir,
-        &runtime_path,
+        &header_path,
         &output_path,
         &compression,
         profile.as_deref(),
-    )?;
+    );
+    let _ = std::fs::remove_file(&header_path);
+    build_result?;
 
     // Make output executable
     use std::os::unix::fs::PermissionsExt;
