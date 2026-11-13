@@ -145,6 +145,7 @@ jobs:
             echo '    crt1.o|Scrt1.o|rcrt1.o|crti.o|crtn.o) continue ;;'
             echo '    crtbegin.o|crtend.o|crtbeginS.o|crtendS.o) continue ;;'
             echo '    -lc) continue ;;'
+            echo '    -Wl,--no-rosegment|--no-rosegment) continue ;;'
             echo '    */self-contained/*.o) continue ;;'
             echo '    --target=*-unknown-linux-*)'
             echo '      t="${a#--target=}"'
