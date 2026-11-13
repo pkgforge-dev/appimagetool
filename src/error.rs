@@ -91,7 +91,7 @@ pub enum Error {
     /// The metadata SquashFS is larger than its fixed slot.
     #[error(
         "metadata SquashFS is {size} bytes, exceeding the fixed {limit}-byte sidecar slot\n  \
-         hint: use a 256x256 PNG .DirIcon or rebuild the runtime with a larger metadata scan limit"
+         hint: use a smaller .DirIcon (for example a 256x256 PNG) or reduce the desktop entry size"
     )]
     MetadataSidecarTooLarge {
         /// Size of the built metadata image.

@@ -2,10 +2,10 @@
 //! the DwarFS payload.
 //!
 //! Many thumbnailers and desktop-integration tools only know how to read a
-//! SquashFS at the end of the runtime ELF. The sidecar carries just `.DirIcon`
-//! and the main `.desktop` entry so those tools work against a DwarFS
-//! AppImage. The runtime skips this image and mounts the following DwarFS
-//! payload.
+//! SquashFS at the end of the runtime ELF. The sidecar carries `.DirIcon`, the
+//! main `.desktop` entry, and a stub `AppRun` so those tools work against a
+//! DwarFS AppImage. The runtime skips this image and mounts the following
+//! DwarFS payload.
 //!
 //! The image is always padded to [`SIDECAR_SLOT_BYTES`]. Keeping the slot size
 //! constant keeps the DwarFS payload at a stable offset across releases, which
@@ -35,8 +35,8 @@ const DUMMY_APPRUN: &[u8] = b"#!/bin/sh\n\
 >&2 echo 'This is not the real AppImage payload, this is a DwarFS AppImage, please use dwarfs to mount it instead'\n\
 exit 1\n";
 
-/// Build a padded metadata SquashFS image containing `.DirIcon` and the main
-/// desktop entry from `appdir`.
+/// Build a padded metadata SquashFS image containing `.DirIcon`, the main
+/// desktop entry, and a stub `AppRun` from `appdir`.
 ///
 /// `desktop_path` must be the final desktop file (after X-AppImage metadata
 /// has been added), so the sidecar advertises the same metadata as the real
