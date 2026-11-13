@@ -1,18 +1,23 @@
-// Pinned upstream artifact URLs and SHA-256 digests.
+// Pinned artifact URLs and SHA-256 digests.
 //
 // Uses line comments rather than `//!` module docs because `build.rs` pulls this
 // file in with `include!`, which cannot carry inner doc comments. The module
 // documentation lives on the `pub mod pinned;` declaration in `lib.rs`.
 
-/// Default uruntime download URL. Pinned for reproducible builds; override with
-/// `--runtime-url` / `URUNTIME_LINK`. `{arch}` is replaced with the target
-/// architecture.
+/// Default Anylinux-uruntime download URL. Pinned for reproducible builds;
+/// override with `--runtime-url` / `URUNTIME_LINK`. `{arch}` is replaced with
+/// the target architecture.
+///
+/// This is the pkgforge-dev fork of uruntime. It tracks upstream version 0.8.1
+/// and adds support for skipping a leading metadata SquashFS image, which the
+/// AppImage builder uses so SquashFS-only thumbnailers and desktop integration
+/// tools can read `.DirIcon` and the desktop entry.
 ///
 /// The `-lite` in this asset name is a licensing boundary, not just a size
 /// choice. The lite variant embeds DwarFS `dwarfs-fuse-extract`, which holds
 /// only the MIT-licensed reader and extractor. The non-lite variant embeds
 /// `dwarfs-universal`, which also contains the GPL-3.0 `mkdwarfs` writer.
-pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.8.1/uruntime-appimage-dwarfs-lite-{arch}";
+pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/pkgforge-dev/Anylinux-uruntime/releases/download/v0.8.1/uruntime-appimage-dwarfs-lite-{arch}";
 
 /// Default mkdwarfs download URL. `{arch}` is the host arch at run time, and
 /// the build target in `build.rs` when embedding the blob.
@@ -30,27 +35,27 @@ pub const MKDWARFS_URL_TEMPLATE: &str =
 pub const URUNTIME_CHECKSUMS: &[(&str, &str)] = &[
     (
         "aarch64",
-        "c1641dfe465f4cb70ae545fbfb9de7a221aa6e9a0b1d7ea600b213a1f10738a0",
+        "3abaff7ab3f060ee0decfae106b08c1a08577ce623b9ff6c0aeba3107c4399fc",
     ),
     (
         "loongarch64",
-        "7f149441fbb772477c8748e58c1233e4e0e141d6ca2507c4ddad97b69b4008bc",
+        "6e10bf259359fd5fb22ac11f4354e8b9aff36976d35077a020ad0681ccd7380a",
     ),
     (
         "ppc64",
-        "db7a7834c1cb657c2708eab206d9a140231962d22f776cd0ea4fd9a482be3037",
+        "6798d59314bdc42b756afb05038778706b26a22eb96a27e47fc563d386cbbe10",
     ),
     (
         "ppc64le",
-        "0fa3983c5c18794e841d2ad20938b87c467cbf24034a0fad608c5fe00a1668a9",
+        "e8cda02eab73180c241dfd2352426edff28fd7f46524275d44b27aa474f49eee",
     ),
     (
         "riscv64",
-        "25d1137942a24fed3d1126686960de5dc5ec44070d5e3a6c3544cca229d230cb",
+        "13dcf97dc0b2a7fd35e719d2b3d26ad33be8df1ddf65b9f3000a013bbbd25b3a",
     ),
     (
         "x86_64",
-        "b3c2916153e089d703cee5a7ebc540941d2f1d71baa90eb3092b15eef48345a8",
+        "b5e361879fdd8d6056f814cfdfcecc02bb74b679cf9d9d81ea6f0d65b521fb18",
     ),
 ];
 

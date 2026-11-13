@@ -84,6 +84,22 @@ pub enum Error {
     #[error("mksquashfs failed: {0}")]
     SquashfsFailed(String),
 
+    /// Failed to build the metadata SquashFS sidecar.
+    #[error("failed to build metadata SquashFS sidecar: {0}")]
+    MetadataSidecar(String),
+
+    /// The metadata SquashFS is larger than its fixed slot.
+    #[error(
+        "metadata SquashFS is {size} bytes, exceeding the fixed {limit}-byte sidecar slot\n  \
+         hint: use a smaller .DirIcon (for example a 256x256 PNG) or reduce the desktop entry size"
+    )]
+    MetadataSidecarTooLarge {
+        /// Size of the built metadata image.
+        size: usize,
+        /// Fixed slot size available for the sidecar.
+        limit: usize,
+    },
+
     /// Failed to generate the `.zsync` control file.
     #[error(
         "zsync generation failed: {0}\n  \
