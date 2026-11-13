@@ -8,7 +8,7 @@
 /// override with `--runtime-url` / `URUNTIME_LINK`. `{arch}` is replaced with
 /// the target architecture.
 ///
-/// This is the pkgforge-dev fork of uruntime. It tracks upstream version 0.8.1
+/// This is the pkgforge-dev fork of uruntime. It tracks upstream version 0.8.2
 /// and adds support for skipping a leading metadata SquashFS image, which the
 /// AppImage builder uses so SquashFS-only thumbnailers and desktop integration
 /// tools can read `.DirIcon` and the desktop entry.
@@ -17,7 +17,7 @@
 /// choice. The lite variant embeds DwarFS `dwarfs-fuse-extract`, which holds
 /// only the MIT-licensed reader and extractor. The non-lite variant embeds
 /// `dwarfs-universal`, which also contains the GPL-3.0 `mkdwarfs` writer.
-pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/pkgforge-dev/Anylinux-uruntime/releases/download/v0.8.1/uruntime-appimage-dwarfs-lite-{arch}";
+pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/pkgforge-dev/Anylinux-uruntime/releases/download/v0.8.2/uruntime-appimage-dwarfs-lite-{arch}";
 
 /// Default mkdwarfs download URL. `{arch}` is the host arch at run time, and
 /// the build target in `build.rs` when embedding the blob.
@@ -35,27 +35,27 @@ pub const MKDWARFS_URL_TEMPLATE: &str =
 pub const URUNTIME_CHECKSUMS: &[(&str, &str)] = &[
     (
         "aarch64",
-        "3abaff7ab3f060ee0decfae106b08c1a08577ce623b9ff6c0aeba3107c4399fc",
+        "2e47ed3cc5cafbb5bbe02c4758229de2f8f582ff00bbff4e36417393317a9780",
     ),
     (
         "loongarch64",
-        "6e10bf259359fd5fb22ac11f4354e8b9aff36976d35077a020ad0681ccd7380a",
+        "33085fa81f4631cca682817b0562aef66e1499f041792b74292ce4e21b74184e",
     ),
     (
         "ppc64",
-        "6798d59314bdc42b756afb05038778706b26a22eb96a27e47fc563d386cbbe10",
+        "8b615ef5cda93ec1fe636417904ecce6654f8238aea3583eba6a3593606fc878",
     ),
     (
         "ppc64le",
-        "e8cda02eab73180c241dfd2352426edff28fd7f46524275d44b27aa474f49eee",
+        "6d63104f100a8f117947b0f9a3739af8d016434573b2b09861f64092bd8aa177",
     ),
     (
         "riscv64",
-        "13dcf97dc0b2a7fd35e719d2b3d26ad33be8df1ddf65b9f3000a013bbbd25b3a",
+        "4492bf6a7c41d1477288a11870077d316664bc130be268f44d3fb4d121ae97d5",
     ),
     (
         "x86_64",
-        "b5e361879fdd8d6056f814cfdfcecc02bb74b679cf9d9d81ea6f0d65b521fb18",
+        "5fc4b62f2d216f1ec30501b97b73f5f8e97de79e78f3cb3b73116d84ac28f897",
     ),
 ];
 

@@ -19,7 +19,6 @@ git_release_body = """
 
 [[package]]
 name = "appimagetool"
-publish = false
 git_tag_name = "{{ version }}"
 git_release_enable = true
 changelog_path="./CHANGELOG.md"
