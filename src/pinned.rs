@@ -35,27 +35,27 @@ pub const MKDWARFS_URL_TEMPLATE: &str =
 pub const URUNTIME_CHECKSUMS: &[(&str, &str)] = &[
     (
         "aarch64",
-        "87a8e8760d9ea8aee8b4269e36816d0a747bbd684a53ed464e762f0dc8ce0a31",
+        "3abaff7ab3f060ee0decfae106b08c1a08577ce623b9ff6c0aeba3107c4399fc",
     ),
     (
         "loongarch64",
-        "ecb9cb45bf8e1b28aba7e42efcd79d2fbdcb770e01619a34433e299c340e17d4",
+        "6e10bf259359fd5fb22ac11f4354e8b9aff36976d35077a020ad0681ccd7380a",
     ),
     (
         "ppc64",
-        "a1a3c87da85c67fcf14a6104103f9f999d692b46da42901f7e0f7c46b190f56b",
+        "6798d59314bdc42b756afb05038778706b26a22eb96a27e47fc563d386cbbe10",
     ),
     (
         "ppc64le",
-        "748d0f37f5b430b93987cf39186ef1f50e14a129ad1d5b39917a8d10e4a64ae5",
+        "e8cda02eab73180c241dfd2352426edff28fd7f46524275d44b27aa474f49eee",
     ),
     (
         "riscv64",
-        "1807c93f57fffdc26a9b6555bb73a37f0a5e81cf151c3eeeada4c42d1aa013db",
+        "13dcf97dc0b2a7fd35e719d2b3d26ad33be8df1ddf65b9f3000a013bbbd25b3a",
     ),
     (
         "x86_64",
-        "3b5c92fb09c14bda9b51fb89c0c7125d84bf05777280abf07a267dbd4f6497a0",
+        "b5e361879fdd8d6056f814cfdfcecc02bb74b679cf9d9d81ea6f0d65b521fb18",
     ),
 ];
 

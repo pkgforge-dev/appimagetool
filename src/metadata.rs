@@ -24,9 +24,8 @@ const SIDECAR_ZSTD_LEVEL: u32 = 22;
 
 /// Fixed size of the metadata slot between the runtime and the DwarFS payload.
 ///
-/// The image is zero-padded to this size. This value must not exceed
-/// uruntime's `METADATA_PAYLOAD_SCAN_LIMIT`; the patched runtime uses a larger
-/// limit so a 128 KiB slot can always be skipped.
+/// The image is zero-padded to this size. The patched runtime scans the fixed
+/// 128 KiB slot for the following DwarFS payload.
 pub const SIDECAR_SLOT_BYTES: usize = 128 * 1024;
 
 /// Stub `AppRun` for tools that mount or extract the metadata image instead of
