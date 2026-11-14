@@ -130,13 +130,19 @@ pub fn build(config: &Config) -> Result<()> {
         .clone()
         .unwrap_or_else(|| dwarfs::default_compression(&config.appdir));
 
-    // Build the final AppImage. The header is the configured runtime followed
-    // by a small metadata SquashFS so SquashFS-only thumbnailers and desktop
-    // integration tools can read .DirIcon and the desktop entry.
-    crate::log_info!("Building metadata SquashFS sidecar...");
-    let sidecar = metadata::build(&config.appdir, &desktop.path)?;
-    let header_path = metadata::header_path(&config.tmpdir);
-    metadata::write_header(&header_path, &runtime_path, &sidecar)?;
+    // Build the final AppImage. The header is the configured runtime by
+    // default. With SQUASHFS_METADATA_SIDECAR=1, append a small metadata
+    // SquashFS so SquashFS-only thumbnailers and desktop integration tools can
+    // read .DirIcon and the desktop entry.
+    let (header_path, remove_header) = if config.squashfs_metadata_sidecar {
+        crate::log_info!("Building metadata SquashFS sidecar...");
+        let sidecar = metadata::build(&config.appdir, &desktop.path)?;
+        let header_path = metadata::header_path(&config.tmpdir);
+        metadata::write_header(&header_path, &runtime_path, &sidecar)?;
+        (header_path, true)
+    } else {
+        (runtime_path.clone(), false)
+    };
     let build_result = dwarfs::build_appimage(
         &mkdwarfs,
         &config.appdir,
@@ -145,7 +151,9 @@ pub fn build(config: &Config) -> Result<()> {
         &compression,
         profile.as_deref(),
     );
-    let _ = std::fs::remove_file(&header_path);
+    if remove_header {
+        let _ = std::fs::remove_file(&header_path);
+    }
     build_result?;
 
     // Make output executable

@@ -3,7 +3,7 @@
 
 ### 🐛 Bug Fixes
 
-- *(runtime)* Update pinned Anylinux-uruntime to v0.8.2 - ([902641f](https://github.com/pkgforge-dev/appimagetool/commit/902641fc0278863d57bfcc5eb0f310692616671a))
+- *(runtime)* Update pinned uruntime to v0.8.2 - ([902641f](https://github.com/pkgforge-dev/appimagetool/commit/902641fc0278863d57bfcc5eb0f310692616671a))
 
 ## [0.6.0](https://github.com/pkgforge-dev/Anylinux-appimagetool/compare/0.5.6...0.6.0) - 2026-11-13
 

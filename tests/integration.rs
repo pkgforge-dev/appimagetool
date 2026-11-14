@@ -300,6 +300,7 @@ fn test_config_defaults() {
     assert!(!config.keep_mount);
     assert!(!config.devel_release);
     assert_eq!(config.profile_timeout, 10);
+    assert!(!config.squashfs_metadata_sidecar);
     // No explicit compression: the default is resolved at build time
     assert_eq!(config.dwarfs_comp, None);
 }

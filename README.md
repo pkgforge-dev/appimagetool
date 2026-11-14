@@ -6,7 +6,7 @@
 
 A Rust implementation of `appimagetool` for the [Anylinux-AppImages](https://github.com/pkgforge-dev/Anylinux-AppImages) project.
 
-It takes a prepared AppDir and produces a finished `.AppImage` using DWARFS compression and the [Anylinux-uruntime](https://github.com/pkgforge-dev/Anylinux-uruntime) AppImage runtime. Single binary, no Python, no C++ deps.
+It takes a prepared AppDir and produces a finished `.AppImage` using DWARFS compression and the [uruntime](https://github.com/VHSgunzo/uruntime) AppImage runtime. Single binary, no Python, no C++ deps.
 
 ## Quick start
 
@@ -25,8 +25,8 @@ That's it. The tool will:
 ## Features
 
 - DWARFS compression for small, delta-friendly AppImages.
-- Drop-in Anylinux-uruntime integration with automatic download and ELF section patching.
-- A fixed-size SquashFS metadata sidecar (`.DirIcon`, desktop entry, and a stub `AppRun`) so SquashFS-only thumbnailers and desktop integration tools work with DwarFS AppImages.
+- Drop-in uruntime integration with automatic download and ELF section patching.
+- An optional fixed-size SquashFS metadata sidecar (`.DirIcon`, desktop entry, and a stub `AppRun`) so SquashFS-only thumbnailers and desktop integration tools work with DwarFS AppImages. Enable it with `SQUASHFS_METADATA_SIDECAR=1`.
 - Optional profile-guided optimization (DWARFS hotness profiling) for faster launches.
 - Built-in zsync generation, no `zsyncmake` shell-out.
 - No central repository, no daemon, no extra runtime deps.
@@ -112,6 +112,7 @@ Every CLI option has a matching env var (shown above). A few extra knobs that ar
 | `DEVEL_RELEASE`      | Set to `1` to tag the build as a nightly/devel release.                                 |
 | `OPTIMIZE_LAUNCH`    | Set to `1` to enable the DWARFS profiling pass (same as `--optimize-launch`).           |
 | `OPTIMIZE_LAUNCH_TIMEOUT` | Profiling timeout in seconds (default `10`).                                       |
+| `SQUASHFS_METADATA_SIDECAR` | Set to `1` to add the fixed-size SquashFS metadata sidecar (disabled by default). |
 | `SKIP_INTEGRITY_CHECKS` | Set to `1` to skip the pinned uruntime SHA-256 verification.                         |
 
 ### DWARFS compression
@@ -134,10 +135,12 @@ An explicit `--dwarfs-comp` is passed to `mkdwarfs` unchanged.
 
 ### SquashFS metadata sidecar
 
-Each AppImage gets a fixed **128 KiB** SquashFS sidecar between the runtime and
-the DwarFS payload. It contains the AppDir's `.DirIcon`, main `.desktop` file,
-and a stub `AppRun` that tells tools such as `appimage-run` that the image must
-be mounted as DwarFS. The sidecar is compressed with zstd level 22.
+The sidecar is opt-in: set `SQUASHFS_METADATA_SIDECAR=1` to add it. When
+enabled, the AppImage gets a fixed **128 KiB** SquashFS sidecar between the
+runtime and the DwarFS payload. It contains the AppDir's `.DirIcon`, main
+`.desktop` file, and a stub `AppRun` that tells tools such as `appimage-run`
+that the image must be mounted as DwarFS. The sidecar is compressed with zstd
+level 22.
 
 The sidecar makes SquashFS-only thumbnailers and desktop-integration tools work
 without understanding DwarFS. The stub `AppRun` does not launch the application;
@@ -153,11 +156,11 @@ The build fails if the metadata image does not fit in the slot. The 128 KiB
 slot covers typical 256x256 and 512x512 icons and most SVGs, including
 translation-heavy desktop files.
 
-The pinned runtime is the
-[Anylinux-uruntime](https://github.com/pkgforge-dev/Anylinux-uruntime) fork,
-which skips the sidecar and mounts the DwarFS payload. A custom `--runtime`
-must include the same metadata-image support, otherwise the runtime will try to
-mount the metadata SquashFS as the application.
+The pinned [uruntime](https://github.com/VHSgunzo/uruntime) release supports
+skipping the sidecar and mounting the DwarFS payload. A custom `--runtime` used
+with the sidecar enabled must include the same metadata-image support,
+otherwise the runtime will try to mount the metadata SquashFS as the
+application.
 
 ### AppDir requirements
 
