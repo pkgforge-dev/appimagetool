@@ -1,4 +1,11 @@
 
+## [0.7.0](https://github.com/pkgforge-dev/appimagetool/compare/0.6.1...0.7.0) - 2026-11-14
+
+### 🐛 Bug Fixes
+
+- *(runtime)* Go back to upstream uruntime v0.8.3 - ([5e7cd58](https://github.com/pkgforge-dev/appimagetool/commit/5e7cd58eb2f19f4d557529d350d196004dc4a8f8))
+- *(sidecar)* Require SQUASHFS_METADATA_SIDECAR=1 exactly - ([73641a0](https://github.com/pkgforge-dev/appimagetool/commit/73641a065f039713aac544442dbd30d22192c733))
+
 ## [0.6.1](https://github.com/pkgforge-dev/appimagetool/compare/0.6.0...0.6.1) - 2026-11-13
 
 ### 🐛 Bug Fixes
