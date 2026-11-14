@@ -135,8 +135,7 @@ An explicit `--dwarfs-comp` is passed to `mkdwarfs` unchanged.
 
 ### SquashFS metadata sidecar
 
-The sidecar is opt-in: set `SQUASHFS_METADATA_SIDECAR=1` to add it. Only the
-exact value `1` enables it; `0` and any other value leave it disabled. When
+The sidecar is opt-in: set `SQUASHFS_METADATA_SIDECAR=1` to add it. When
 enabled, the AppImage gets a fixed **128 KiB** SquashFS sidecar between the
 runtime and the DwarFS payload. It contains the AppDir's `.DirIcon`, main
 `.desktop` file, and a stub `AppRun` that tells tools such as `appimage-run`
