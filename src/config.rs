@@ -14,6 +14,16 @@ fn env_truthy(name: &str) -> bool {
     )
 }
 
+fn is_one(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
+/// Only the exact value `1` enables the option. This is deliberately stricter
+/// than [`env_truthy`], which also accepts words like `true`, `yes`, and `on`.
+fn env_is_one(name: &str) -> bool {
+    is_one(env_opt(name).as_deref())
+}
+
 /// The host arch in the spelling upstream uses for its assets. `mkdwarfs` runs
 /// on the host, so it follows this rather than `--appimage-arch`.
 pub fn host_asset_arch() -> String {
@@ -144,7 +154,7 @@ impl Config {
 
         let keep_mount = args.keep_mount || env_truthy("URUNTIME_PRELOAD");
         let devel_release = args.devel_release || env_truthy("DEVEL_RELEASE");
-        let squashfs_metadata_sidecar = env_truthy("SQUASHFS_METADATA_SIDECAR");
+        let squashfs_metadata_sidecar = env_is_one("SQUASHFS_METADATA_SIDECAR");
 
         let profile_timeout = args
             .profile_timeout
@@ -308,5 +318,24 @@ mod tests {
     fn test_dirs_home_returns_something() {
         let home = dirs_home();
         assert!(!home.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn sidecar_opt_in_requires_exactly_one() {
+        assert!(is_one(Some("1")));
+        for value in [
+            None,
+            Some("0"),
+            Some("2"),
+            Some("01"),
+            Some("true"),
+            Some("yes"),
+            Some("on"),
+            Some(""),
+            Some(" 1"),
+            Some("1 "),
+        ] {
+            assert!(!is_one(value), "{value:?} must not enable the sidecar");
+        }
     }
 }
