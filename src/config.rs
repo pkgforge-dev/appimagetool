@@ -70,6 +70,9 @@ pub struct Config {
     /// How long, in seconds, to let the AppImage run during the DWARFS
     /// profiling pass before tearing it down.
     pub profile_timeout: u64,
+    /// Build the fixed-size SquashFS metadata sidecar before the DwarFS
+    /// payload. Opt-in via `SQUASHFS_METADATA_SIDECAR=1`.
+    pub squashfs_metadata_sidecar: bool,
 }
 
 /// Inputs gathered from the CLI (or set explicitly by library callers).
@@ -141,6 +144,7 @@ impl Config {
 
         let keep_mount = args.keep_mount || env_truthy("URUNTIME_PRELOAD");
         let devel_release = args.devel_release || env_truthy("DEVEL_RELEASE");
+        let squashfs_metadata_sidecar = env_truthy("SQUASHFS_METADATA_SIDECAR");
 
         let profile_timeout = args
             .profile_timeout
@@ -190,6 +194,7 @@ impl Config {
             keep_mount,
             devel_release,
             profile_timeout,
+            squashfs_metadata_sidecar,
         })
     }
 }

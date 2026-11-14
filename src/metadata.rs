@@ -9,7 +9,8 @@
 //!
 //! The image is always padded to [`SIDECAR_SLOT_BYTES`]. Keeping the slot size
 //! constant keeps the DwarFS payload at a stable offset across releases, which
-//! preserves zsync delta-update efficiency.
+//! preserves zsync delta-update efficiency. This module is only used when
+//! `SQUASHFS_METADATA_SIDECAR=1`; the sidecar is disabled by default.
 
 use std::io::Cursor;
 use std::path::{Path, PathBuf};

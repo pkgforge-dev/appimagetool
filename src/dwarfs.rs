@@ -151,7 +151,7 @@ fn mkdwarfs_source(config: &Config) -> (String, Option<&'static str>) {
 }
 
 /// Build a DWARFS AppImage. `header` is prepended via `--header`; it is the
-/// configured runtime followed by the metadata SquashFS sidecar.
+/// configured runtime, optionally followed by the metadata SquashFS sidecar.
 pub fn build_appimage(
     mkdwarfs: &Path,
     appdir: &Path,
