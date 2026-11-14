@@ -1,4 +1,10 @@
 
+## [0.7.0](https://github.com/pkgforge-dev/appimagetool/compare/0.6.1...0.7.0) - 2026-11-14
+
+### 🐛 Bug Fixes
+
+- *(runtime)* Go back to upstream uruntime v0.8.3 - ([c325cb0](https://github.com/pkgforge-dev/appimagetool/commit/c325cb04f97a6ba3e0a977bc7bb4f6c0c82872f1))
+
 ## [0.6.1](https://github.com/pkgforge-dev/appimagetool/compare/0.6.0...0.6.1) - 2026-11-13
 
 ### 🐛 Bug Fixes
