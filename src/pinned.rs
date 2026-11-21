@@ -8,7 +8,7 @@
 /// with `--runtime-url` / `URUNTIME_LINK`. `{arch}` is replaced with the target
 /// architecture.
 ///
-/// uruntime 0.8.3 supports skipping a leading metadata SquashFS image, which
+/// uruntime 0.8.5 supports skipping a leading metadata SquashFS image, which
 /// the AppImage builder appends when `SQUASHFS_METADATA_SIDECAR=1` so that
 /// SquashFS-only thumbnailers and desktop integration tools can read
 /// `.DirIcon` and the desktop entry.
@@ -17,7 +17,7 @@
 /// choice. The lite variant embeds DwarFS `dwarfs-fuse-extract`, which holds
 /// only the MIT-licensed reader and extractor. The non-lite variant embeds
 /// `dwarfs-universal`, which also contains the GPL-3.0 `mkdwarfs` writer.
-pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.8.3/uruntime-appimage-dwarfs-lite-{arch}";
+pub const URUNTIME_URL_TEMPLATE: &str = "https://github.com/VHSgunzo/uruntime/releases/download/v0.8.5/uruntime-appimage-dwarfs-lite-{arch}";
 
 /// Default mkdwarfs download URL. `{arch}` is the host arch at run time, and
 /// the build target in `build.rs` when embedding the blob.
@@ -35,27 +35,27 @@ pub const MKDWARFS_URL_TEMPLATE: &str =
 pub const URUNTIME_CHECKSUMS: &[(&str, &str)] = &[
     (
         "aarch64",
-        "601aeaa0047c3103bffab41081c5acd25b2f449a74ea47cbafe95cc31b577716",
+        "421e4da1c515f658701f6873e0ef71e87c3c5b5ec3ba94f1b8aaa3b66970e89f",
     ),
     (
         "loongarch64",
-        "3c51688628602245908476dcb320bad9a7c866bcc8c353b033f1ad609641e7c6",
+        "af1b87c6a6133189be8ec8423ec179c1a0fc97de3ce5ed874de489ddff3a0468",
     ),
     (
         "ppc64",
-        "77bc2c9d7eacb37dd79749fdbab23888886d7804f3d34d17ecc955431357dc71",
+        "0bda17cccf3d19ecc2075066be258eff627facb068d29078bff03173a2368217",
     ),
     (
         "ppc64le",
-        "efc7e56dee17a68f4886091622e889c18dc3fa49a2f5ab6ff970655ad54a42fc",
+        "88378bff19aae00c4a0f33b34215da7e50b5a25c173054ec6fef6c0599141e5a",
     ),
     (
         "riscv64",
-        "9e83acf0606a87cc51b9e4a8f0f554ecff2bc2ed5a83463cf482d8cdc697130c",
+        "b9f4f97e6cf618f88331d78ba61b7242194468cb7cf3c38596d971c683748f4d",
     ),
     (
         "x86_64",
-        "649948f2bf4c012fa909f0b746949f22e97fd4a9b86ae1aea0512b70813a9248",
+        "57ae5846262a1d1063f758d9a7ade463e62ad37d5996a67a8a95172572257678",
     ),
 ];
 
