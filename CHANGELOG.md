@@ -1,4 +1,10 @@
 
+## [0.7.1](https://github.com/pkgforge-dev/appimagetool/compare/0.7.0...0.7.1) - 2026-11-21
+
+### 🐛 Bug Fixes
+
+- *(runtime)* Update pinned uruntime to v0.8.5 - ([b03ae9c](https://github.com/pkgforge-dev/appimagetool/commit/b03ae9cb369b626d7664f43dd19a952137dc2c6f))
+
 ## [0.7.0](https://github.com/pkgforge-dev/appimagetool/compare/0.6.1...0.7.0) - 2026-11-14
 
 ### 🐛 Bug Fixes
